@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+
+enum OrderStatus {
+  CART
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  address       String?
+  image         String?
+  role          Role      @default(USER)
+  phoneNumber   String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relasi dengan Order
+  orders        Order[]
+}
+
+model Product {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  name            String?   @db.Text
+  description     String?   @db.Text
+  image           String?   @db.Text
+  price           String?   @db.Text
+  // Relasi dengan OrderItem
+  orderItems      OrderItem[]
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  userId          String
+  user            User         @relation(fields: [userId], references: [id])
+  status          OrderStatus  @default(PENDING) // Status order, seperti PENDING, COMPLETED, CANCELLED
+  totalPrice      Float        @default(0)
+  orderItems      OrderItem[]
+}
+
+model OrderItem {
+  id              String     @id @default(cuid())
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  orderId         String
+  order           Order      @relation(fields: [orderId], references: [id])
+  productId       String
+  product         Product    @relation(fields: [productId], references: [id])
+  quantity        Int        @default(1)
+  price           Float
+}
+
+
+
