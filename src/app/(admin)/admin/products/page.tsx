@@ -9,6 +9,7 @@ interface Product {
   description: string;
   price: number;
   image?: string;
+  category: string; // Add category to product
 }
 
 interface FormState {
@@ -17,6 +18,7 @@ interface FormState {
   description: string;
   price: string;
   image: File | null;
+  category: string; // Add category to form state
 }
 
 const Page: React.FC = () => {
@@ -27,8 +29,12 @@ const Page: React.FC = () => {
     description: "",
     price: "",
     image: null,
+    category: "", // Set default value for category
   });
   const [loading, setLoading] = useState(false);
+
+  // Example categories, you can fetch these from an API if needed
+  const categories = ["LAPTOP", "SPAREPART"];
 
   // Fetch all products
   const fetchProducts = async (): Promise<void> => {
@@ -54,6 +60,7 @@ const Page: React.FC = () => {
     formData.append("name", form.name);
     formData.append("description", form.description);
     formData.append("price", form.price);
+    formData.append("category", form.category); // Append category
     if (form.image) {
       formData.append("image", form.image);
     }
@@ -71,7 +78,14 @@ const Page: React.FC = () => {
       if (response.ok) {
         alert(`Product ${form.id ? "updated" : "created"} successfully.`);
         fetchProducts(); // Refresh products
-        setForm({ id: "", name: "", description: "", price: "", image: null });
+        setForm({
+          id: "",
+          name: "",
+          description: "",
+          price: "",
+          image: null,
+          category: "",
+        });
       } else {
         console.error(data.error);
         alert(data.error);
@@ -120,6 +134,7 @@ const Page: React.FC = () => {
       description: product.description,
       price: product.price.toString(),
       image: null, // Leave image null as it cannot be preloaded
+      category: product.category, // Set category
     });
   };
 
@@ -172,6 +187,19 @@ const Page: React.FC = () => {
               className="w-full p-2 mb-3 border rounded focus:border-primary outline-none"
               required
             />
+            <select
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="w-full p-2 mb-3 border rounded focus:border-primary outline-none"
+              required
+            >
+              <option value="">Select Category</option>
+              {categories.map((category, index) => (
+                <option key={index} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
             <input
               type="file"
               accept="image/*"
@@ -208,6 +236,9 @@ const Page: React.FC = () => {
                     Price
                   </th>
                   <th scope="col" className="px-6 py-3">
+                    Category
+                  </th>
+                  <th scope="col" className="px-6 py-3">
                     Actions
                   </th>
                 </tr>
@@ -223,14 +254,21 @@ const Page: React.FC = () => {
                     </th>
                     <td className="px-6 py-4">{product.description}</td>
                     <td className="px-6 py-4">
-                      {product.price && formatCurrency(product.price)}
+                      {formatCurrency(product.price)}
                     </td>
-                    <td className="px-6 py-4 flex items-center gap-2">
-                      <button onClick={() => handleEdit(product)}>
-                        <PencilSquareIcon className="w-6 h-6 text-primary-600" />
+                    <td className="px-6 py-4">{product.category}</td>
+                    <td className="px-6 py-4 flex gap-2">
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="text-primary hover:text-primary-600"
+                      >
+                        <PencilSquareIcon className="w-5 h-5" />
                       </button>
-                      <button onClick={() => handleDelete(product.id)}>
-                        <TrashIcon className="w-6 h-6 text-primary-600" />
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <TrashIcon className="w-5 h-5" />
                       </button>
                     </td>
                   </tr>

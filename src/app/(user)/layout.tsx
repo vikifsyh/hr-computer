@@ -1,3 +1,4 @@
+import Footer from "@/components/fragments/Footer";
 import Navbar from "@/components/fragments/Navbar";
 
 export default function UserLayout({
@@ -10,6 +11,7 @@ export default function UserLayout({
       <body>
         <Navbar />
         {children}
+        <Footer />
       </body>
     </html>
   );

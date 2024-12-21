@@ -1,19 +1,19 @@
-import { PrismaClient } from "@prisma/client";
-
+import { PrismaClient, CategoryEnum } from "@prisma/client";
 import mime from "mime";
 import { join } from "path";
 import { stat, mkdir, writeFile, unlink } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
-import _ from "lodash";
 
 const prisma = new PrismaClient();
 
 type ProductResponse = {
   product?: any;
+  products?: any[];
   error?: string;
   message?: string;
 };
 
+// POST Method: Add Product
 export async function POST(
   req: NextRequest
 ): Promise<NextResponse<ProductResponse>> {
@@ -23,15 +23,25 @@ export async function POST(
   const description = (formData.get("description") as string) || null;
   const image = (formData.get("image") as File) || null;
   const price = (formData.get("price") as string) || null;
+  const category = (formData.get("category") as string) || null;
 
-  if (!image) {
+  // Validate required fields
+  if (!name || !price || !category) {
     return NextResponse.json(
-      { error: "Image file is required." },
+      { error: "Name, price, and category are required fields." },
       { status: 400 }
     );
   }
 
-  const buffer = Buffer.from(await image.arrayBuffer());
+  // Validate category
+  if (!Object.values(CategoryEnum).includes(category as CategoryEnum)) {
+    return NextResponse.json(
+      { error: "Invalid category provided." },
+      { status: 400 }
+    );
+  }
+
+  const buffer = image ? Buffer.from(await image.arrayBuffer()) : null;
   const relativeUploadDir = `/uploads/${new Date(Date.now())
     .toLocaleDateString("id-ID", {
       day: "2-digit",
@@ -39,53 +49,39 @@ export async function POST(
       year: "numeric",
     })
     .replace(/\//g, "-")}`;
-
   const uploadDir = join(process.cwd(), "public", relativeUploadDir);
 
   try {
     await stat(uploadDir);
-  } catch (e: any) {
-    if (e.code === "ENOENT") {
-      await mkdir(uploadDir, { recursive: true });
-    } else {
-      console.error(
-        "Error while trying to create directory when uploading a file\n",
-        e
-      );
-      return NextResponse.json(
-        { error: "Something went wrong." },
-        { status: 500 }
-      );
-    }
+  } catch {
+    await mkdir(uploadDir, { recursive: true });
   }
 
-  try {
+  let fileUrl = null;
+  if (buffer && image) {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     const filename = `${image.name.replace(
       /\.[^/.]+$/,
       ""
     )}-${uniqueSuffix}.${mime.getExtension(image.type)}`;
     await writeFile(`${uploadDir}/${filename}`, buffer);
-    const fileUrl = `${relativeUploadDir}/${filename}`;
-
-    // Save to database
-    const result = await prisma.product.create({
-      data: {
-        name,
-        description,
-        price,
-        image: fileUrl,
-      },
-    });
-
-    return NextResponse.json({ product: result });
-  } catch (e) {
-    console.error("Error while trying to upload a file\n", e);
-    return NextResponse.json(
-      { error: "Something went wrong." },
-      { status: 500 }
-    );
+    fileUrl = `${relativeUploadDir}/${filename}`;
   }
+
+  // Ensure category is passed as CategoryEnum type
+  const categoryEnum = category as CategoryEnum;
+
+  const result = await prisma.product.create({
+    data: {
+      name,
+      description,
+      price,
+      image: fileUrl,
+      category: categoryEnum,
+    },
+  });
+
+  return NextResponse.json({ product: result });
 }
 
 // PUT Method: Update Product
@@ -95,176 +91,109 @@ export async function PUT(req: NextRequest) {
   const id = searchParams.get("id");
 
   if (!id) {
-    return NextResponse.json(
-      { error: "ID must be provided." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "ID is required." }, { status: 400 });
   }
+
   const name = (formData.get("name") as string) || null;
   const description = (formData.get("description") as string) || null;
   const image = (formData.get("image") as File) || null;
   const price = (formData.get("price") as string) || null;
+  const category = (formData.get("category") as string) || null;
 
-  try {
-    // Find the existing product
-    const existingProduct = await prisma.product.findUnique({ where: { id } });
-
-    if (!existingProduct) {
-      return NextResponse.json(
-        { error: "Product not found." },
-        { status: 404 }
-      );
-    }
-
-    let fileUrl = existingProduct.image;
-
-    // If a new image is uploaded, replace the old one
-    if (image) {
-      const buffer = Buffer.from(await image.arrayBuffer());
-      const relativeUploadDir = `/uploads/${new Date(Date.now())
-        .toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .replace(/\//g, "-")}`;
-
-      const uploadDir = join(process.cwd(), "public", relativeUploadDir);
-
-      try {
-        await stat(uploadDir);
-      } catch (e: any) {
-        if (e.code === "ENOENT") {
-          await mkdir(uploadDir, { recursive: true });
-        } else {
-          console.error(
-            "Error while trying to create directory when uploading a file\n",
-            e
-          );
-          return NextResponse.json(
-            { error: "Something went wrong." },
-            { status: 500 }
-          );
-        }
-      }
-
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const filename = `${image.name.replace(
-        /\.[^/.]+$/,
-        ""
-      )}-${uniqueSuffix}.${mime.getExtension(image.type)}`;
-      await writeFile(`${uploadDir}/${filename}`, buffer);
-      fileUrl = `${relativeUploadDir}/${filename}`;
-
-      // Delete the old image file if it exists
-      if (existingProduct.image) {
-        const oldImagePath = join(
-          process.cwd(),
-          "public",
-          existingProduct.image
-        );
-        try {
-          await unlink(oldImagePath);
-        } catch (e) {
-          console.error("Error while trying to delete old image\n", e);
-        }
-      }
-    }
-
-    // Update the product in the database
-    const updatedProduct = await prisma.product.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        price,
-        image: fileUrl,
-      },
-    });
-
-    return NextResponse.json({ product: updatedProduct });
-  } catch (e) {
-    console.error("Error while trying to update product\n", e);
+  if (
+    category &&
+    !Object.values(CategoryEnum).includes(category as CategoryEnum)
+  ) {
     return NextResponse.json(
-      { error: "Something went wrong." },
-      { status: 500 }
+      { error: "Invalid category provided." },
+      { status: 400 }
     );
   }
+
+  const existingProduct = await prisma.product.findUnique({ where: { id } });
+  if (!existingProduct) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  }
+
+  let fileUrl = existingProduct.image;
+  if (image) {
+    const buffer = Buffer.from(await image.arrayBuffer());
+    const relativeUploadDir = `/uploads/${new Date(Date.now())
+      .toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, "-")}`;
+    const uploadDir = join(process.cwd(), "public", relativeUploadDir);
+
+    try {
+      await stat(uploadDir);
+    } catch {
+      await mkdir(uploadDir, { recursive: true });
+    }
+
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const filename = `${image.name.replace(
+      /\.[^/.]+$/,
+      ""
+    )}-${uniqueSuffix}.${mime.getExtension(image.type)}`;
+    await writeFile(`${uploadDir}/${filename}`, buffer);
+    fileUrl = `${relativeUploadDir}/${filename}`;
+
+    if (existingProduct.image) {
+      await unlink(join(process.cwd(), "public", existingProduct.image));
+    }
+  }
+
+  const updatedProduct = await prisma.product.update({
+    where: { id },
+    data: {
+      name,
+      description,
+      price,
+      image: fileUrl,
+      category: category ? (category as CategoryEnum) : undefined,
+    },
+  });
+
+  return NextResponse.json({ product: updatedProduct });
 }
 
 // DELETE Method: Delete Product
 export async function DELETE(req: NextRequest) {
   const url = new URL(req.url);
-  const id = url.searchParams.get("id"); // Product ID to delete
+  const id = url.searchParams.get("id");
 
   if (!id) {
-    return NextResponse.json(
-      { error: "Product ID is required." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "ID is required." }, { status: 400 });
   }
 
-  try {
-    // Find the existing product
-    const existingProduct = await prisma.product.findUnique({ where: { id } });
-
-    if (!existingProduct) {
-      return NextResponse.json(
-        { error: "Product not found." },
-        { status: 404 }
-      );
-    }
-
-    // Delete the product's image file if it exists
-    if (existingProduct.image) {
-      const imagePath = join(process.cwd(), "public", existingProduct.image);
-      try {
-        await unlink(imagePath);
-      } catch (e) {
-        console.error("Error while trying to delete image file\n", e);
-      }
-    }
-
-    // Delete the product from the database
-    await prisma.product.delete({ where: { id } });
-
-    return NextResponse.json({ message: "Product deleted successfully." });
-  } catch (e) {
-    console.error("Error while trying to delete product\n", e);
-    return NextResponse.json(
-      { error: "Something went wrong." },
-      { status: 500 }
-    );
+  const existingProduct = await prisma.product.findUnique({ where: { id } });
+  if (!existingProduct) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
   }
+
+  if (existingProduct.image) {
+    await unlink(join(process.cwd(), "public", existingProduct.image));
+  }
+
+  await prisma.product.delete({ where: { id } });
+  return NextResponse.json({ message: "Product deleted successfully." });
 }
 
+// GET Method: Fetch Products
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const id = url.searchParams.get("id"); // Optional Product ID
+  const id = url.searchParams.get("id");
 
-  try {
-    if (id) {
-      // Fetch a single product by ID
-      const product = await prisma.product.findUnique({ where: { id } });
-
-      if (!product) {
-        return NextResponse.json(
-          { error: "Product not found." },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json({ product });
-    } else {
-      // Fetch all products
-      const products = await prisma.product.findMany();
-      return NextResponse.json({ products });
-    }
-  } catch (e) {
-    console.error("Error while trying to fetch products", e);
-    return NextResponse.json(
-      { error: "Something went wrong." },
-      { status: 500 }
-    );
+  if (id) {
+    const product = await prisma.product.findUnique({ where: { id } });
+    return product
+      ? NextResponse.json({ product })
+      : NextResponse.json({ error: "Product not found." }, { status: 404 });
   }
+
+  const products = await prisma.product.findMany();
+  return NextResponse.json({ products });
 }
