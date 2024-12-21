@@ -21,21 +21,37 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [cartTotal, setCartTotal] = useState(0);
 
-  useEffect(() => {
-    async function fetchCartTotal() {
+  const fetchCartTotal = async () => {
+    if (session?.user) {
       try {
-        const response = await fetch("/api/cart"); // Sesuaikan endpoint Anda
-        if (response.ok) {
-          const data = await response.json();
-          setCartTotal(data.cartTotal || 0); // Tetapkan jumlah item
+        const response = await fetch("/api/cart", {
+          method: "GET",
+        });
+        const data = await response.json();
+        if (data?.carts) {
+          // Calculate the total items in the cart
+          const totalItems = data.carts.reduce(
+            (total: any, cart: any) =>
+              total +
+              cart.orderItems.reduce(
+                (sum: any, item: any) => sum + item.quantity,
+                0
+              ),
+            0
+          );
+          setCartTotal(totalItems);
         }
       } catch (error) {
-        console.error("Error fetching cart total:", error);
+        console.error("Error fetching cart data:", error);
       }
     }
+  };
 
-    fetchCartTotal();
-  }, []);
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchCartTotal();
+    }
+  }, [status, session]);
 
   const dropDown = () => {
     setIsOpen(!isOpen);
@@ -62,7 +78,7 @@ export default function Navbar() {
     <nav className="flex justify-between items-center mx-5 md:mx-20 my-4">
       <div className="flex gap-10 items-center">
         <h1
-          className={`${aclonica.className} text-lg md:text-2xl text-primary`}
+          className={`${aclonica.className} font-extrabold text-lg md:text-2xl text-primary`}
         >
           HR COMPUTER
         </h1>
@@ -85,25 +101,11 @@ export default function Navbar() {
               onClick={dropDown}
             >
               Products
-              <svg
-                className="w-2.5 h-2.5 ml-2.5"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 10 6"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="m1 1 4 4 4-4"
-                />
-              </svg>
+              <ChevronDownIcon className="w-4 h-4 ml-2" />
             </button>
 
             {isOpen && (
-              <div className="origin-top-right absolute right-0 mt-2 w-44 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+              <div className="origin-top-right absolute z-10 right-0 mt-2 w-44 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5">
                 <ul
                   role="menu"
                   aria-orientation="vertical"
@@ -128,11 +130,11 @@ export default function Navbar() {
                   </li>
                   <li>
                     <Link
-                      href="#"
+                      href="/sparepart"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={closeDropdown}
                     >
-                      Sparepart Laptop
+                      Sparepart
                     </Link>
                   </li>
                 </ul>
@@ -284,10 +286,10 @@ export default function Navbar() {
                     </li>
                     <li>
                       <Link
-                        href="#"
+                        href="/sparepart"
                         className="text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        Sparepart Laptop
+                        Sparepart
                       </Link>
                     </li>
                   </ul>

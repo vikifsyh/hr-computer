@@ -18,6 +18,10 @@ enum Role {
   USER
 }
 
+enum CategoryEnum {
+  LAPTOP
+  SPAREPART
+}
 
 enum OrderStatus {
   CART
@@ -37,7 +41,7 @@ model User {
   phoneNumber   String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
+  
   // Relasi dengan Order
   orders        Order[]
 }
@@ -50,6 +54,7 @@ model Product {
   description     String?   @db.Text
   image           String?   @db.Text
   price           String?   @db.Text
+  category      CategoryEnum
   // Relasi dengan OrderItem
   orderItems      OrderItem[]
 }

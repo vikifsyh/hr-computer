@@ -93,19 +93,21 @@ const ProductList = () => {
         setCart(updatedCart);
         toast.success("Successfully added to cart!"); // Show success toast
       } else {
-        toast.error("Failed to add item to cart"); // Show error toast
+        toast.error("Please Login"); // Show error toast
       }
     } catch (error) {
       console.error("Error adding item to cart:", error);
-      toast.error("Failed to add item to cart"); // Show error toast
+      toast.error("Please Login"); // Show error toast
     }
   };
 
   return (
     <div className="mx-5 md:mx-20 my-8 md:my-16">
       {error && <p>{error}</p>}
-      <div className="md:flex items-center md:justify-between w-full">
-        <h1 className="my-6 md:my-0 text-3xl font-bold">All Products</h1>
+      <div className="md:flex items-center md:justify-between w-full bg-primary-50 py-2 px-4 rounded-md">
+        <h1 className="my-6 md:my-0  text-2xl font-bold text-primary">
+          All Products
+        </h1>
         <form className="w-full md:w-1/3" onSubmit={(e) => e.preventDefault()}>
           <label
             htmlFor="default-search"
@@ -122,7 +124,7 @@ const ProductList = () => {
               id="default-search"
               value={searchQuery}
               onChange={handleSearch}
-              className="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-primary focus:border-primary outline-none "
+              className="block w-full p-4 ps-10 text-sm text-gray-900 focus:border  rounded-lg bg-white focus:ring-primary focus:border-primary outline-none "
               placeholder="Search..."
               required
             />
@@ -193,7 +195,9 @@ const ProductList = () => {
                         d="M8 7V6c0-.6.4-1 1-1h11c.6 0 1 .4 1 1v7c0 .6-.4 1-1 1h-1M3 18v-7c0-.6.4-1 1-1h11c.6 0 1 .4 1 1v7c0 .6-.4 1-1 1H4c-.6 0-1-.4-1-1Z"
                       />
                     </svg>
-                    <p className="text-sm font-medium text-gray-500 ">Return</p>
+                    <p className="text-sm font-medium text-gray-500 ">
+                      Cash on Delivery
+                    </p>
                   </li>
                 </ul>
               </div>

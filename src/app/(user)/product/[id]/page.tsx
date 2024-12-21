@@ -86,7 +86,7 @@ export default function DetailProduct() {
         </button>
       </div> */}
       <section className=" bg-white  dark:bg-gray-900 antialiased">
-        <div className="max-w-screen-xl px-4 mx-auto 2xl:px-0">
+        <div className="max-w-screen-xl mx-auto ">
           <div className="lg:grid lg:grid-cols-2 lg:gap-8 xl:gap-16">
             <div className="shrink-0 max-w-md lg:max-w-lg mx-auto">
               <Image
@@ -127,9 +127,17 @@ export default function DetailProduct() {
               </div>
 
               <hr className="my-6 md:my-8 border-gray-200 dark:border-gray-800" />
-
-              <p className="mb-6 text-gray-500 dark:text-gray-400">
-                {product.description}
+              <p className="uppercase text-lg font-medium text-neutral-500">
+                Specifications
+              </p>
+              <p className="mb-6 text-neutral-400 dark:text-gray-400">
+                {product.description
+                  .split("\n")
+                  .map((item: any, index: any) => (
+                    <li className="list-none" key={index}>
+                      {item}
+                    </li>
+                  ))}
               </p>
             </div>
           </div>
