@@ -1,25 +1,61 @@
 "use client";
-import { useEffect, useState } from "react";
-import EmptyCart from "../../../../public/image/emptycart.png";
-import Image from "next/image";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Image from "next/image";
+import EmptyCart from "../../../../public/image/emptycart.png";
 
-function CartPage() {
-  const [carts, setCarts] = useState<any[]>([]); // Ensure carts is initialized as an empty array
-  const [loading, setLoading] = useState(true);
+interface OrderItem {
+  id: string;
+  productName: string;
+  quantity: number;
+  price: number;
+  productImage: string;
+}
+
+interface Order {
+  id: string;
+  userName: string;
+  address: string;
+  orderItems: OrderItem[];
+}
+
+export default function Page() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snapLoaded, setSnapLoaded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Ambil data cart dari API
-    const fetchCarts = async () => {
-      setLoading(true); // Set loading true sebelum mengambil data
-      const response = await fetch("/api/cart"); // Ganti dengan URL API Anda
-      const data = await response.json();
-      setCarts(data.carts || []); // Ensure carts is always an array
-      setLoading(false); // Set loading false setelah data berhasil diambil
+    const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
+    const clientKey = process.env.MIDTRANS_CLIENT_KEY || "";
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("/api/cart");
+        if (!response.ok) {
+          throw new Error("Failed to fetch orders");
+        }
+
+        const data = await response.json();
+        setOrders(data.orders);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load orders");
+        setLoading(false);
+      }
     };
-    fetchCarts();
+
+    fetchOrders();
+
+    const script = document.createElement("script");
+    script.src = snapScript;
+    script.setAttribute("data-client-key", clientKey); // Replace with your client key
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
   }, []);
 
   const handleRemoveItem = async (itemId: string) => {
@@ -32,11 +68,10 @@ function CartPage() {
         throw new Error("Failed to remove item");
       }
 
-      // Perbarui state setelah item dihapus
-      setCarts((prevCarts) =>
-        prevCarts.map((cart) => ({
-          ...cart,
-          orderItems: cart.orderItems.filter((item: any) => item.id !== itemId),
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => ({
+          ...order,
+          orderItems: order.orderItems.filter((item) => item.id !== itemId),
         }))
       );
     } catch (error) {
@@ -45,43 +80,82 @@ function CartPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
+  const calculateTotalPrice = (price: string, quantity: number): number => {
+    return parseFloat(price) * quantity;
+  };
+
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString("id-ID", {
       style: "currency",
       currency: "IDR",
-    }).format(amount);
+    });
   };
 
-  const calculateTotalPrice = (price: number, quantity: number): number => {
-    return price * quantity;
+  const checkout = async () => {
+    if (!orders.length) {
+      alert("Your cart is empty.");
+      return;
+    }
+
+    try {
+      const order = orders[0];
+      const response = await fetch("/api/payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to initiate payment");
+      }
+
+      const data = await response.json();
+      const token = data.token.token; // Access the token string here
+
+      window.snap.pay(token, {
+        onSuccess: function (result: any) {
+          console.log("Payment Success:", result);
+          alert("Payment successful!");
+          router.push("/order-success"); // Redirect ke halaman sukses
+        },
+        onPending: function (result: any) {
+          console.log("Payment Pending:", result);
+          alert("Payment is pending. Please complete the transaction.");
+        },
+        onError: function (result: any) {
+          console.log("Payment Error:", result);
+          alert("Payment failed. Please try again.");
+        },
+        onClose: function () {
+          alert("Payment popup closed without completing the transaction.");
+        },
+      });
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      alert("An error occurred during checkout. Please try again.");
+    }
   };
 
-  // Check if user is logged in
-  const isLoggedIn = true; // Replace with actual authentication check logic
-
-  if (!isLoggedIn) {
-    router.push("/signIn"); // Redirect to login page if not logged in
-    return null; // You can return a loading or redirect message here
+  if (loading) {
+    return (
+      <div className="mx-5 md:mx-20 my-8 md:my-16">
+        <h1 className="text-xl font-medium text-gray-900">Your Cart</h1>
+        {/* Skeleton loading here */}
+      </div>
+    );
   }
 
-  return (
-    <div className="mx-5 md:mx-20 my-8 md:my-16">
-      <h1 className="text-xl font-medium text-gray-900">Your Cart</h1>
-      {loading ? (
-        <div className="space-y-6">
-          <div className="p-6 divide-y divide-gray-200">
-            <div className="flex gap-4 items-center py-6">
-              <div className="skeleton-image w-[130px] h-[130px] bg-gray-300 rounded-md"></div>
-              <div className="flex flex-col gap-2 w-full">
-                <div className="skeleton-text h-6 w-3/4 bg-gray-300"></div>
-                <div className="skeleton-text h-6 w-1/4 bg-gray-300"></div>
-              </div>
-            </div>
-            <div className="skeleton-text h-4 w-1/3 bg-gray-300 mt-3"></div>
-            <div className="skeleton-button h-10 w-1/2 bg-gray-300 mt-4"></div>
-          </div>
-        </div>
-      ) : carts.length === 0 ? (
+  if (
+    orders.length === 0 ||
+    orders.every((order) => order.orderItems.length === 0)
+  ) {
+    return (
+      <div className="mx-5 md:mx-20 my-8 md:my-16">
+        <h1 className="text-xl font-medium text-gray-900">Your Cart</h1>
         <div className="text-center py-4">
           <div className="max-w-32 mx-auto">
             <Image
@@ -94,10 +168,6 @@ function CartPage() {
           <p className="text-lg font-semibold text-gray-700">
             Your cart is empty.
           </p>
-          <p className="text-gray-400">
-            Looks like you have not added anything to your cart. Go ahead &
-            explore top categories
-          </p>
           <button
             onClick={() => router.push("/product")}
             className="mt-6 text-primary-600 hover:text-primary-400"
@@ -105,16 +175,36 @@ function CartPage() {
             Continue Shopping
           </button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="p-6 divide-y divide-gray-200">
-            {carts.map((cart) => (
-              <div key={cart.id}>
-                {cart.orderItems.map((item: any) => {
-                  return (
-                    <div key={item.id} className="flex gap-4 items-center py-6">
-                      <div className="flex items-center space-x-4 w-full">
-                        <div className="size-28 shrink-0 overflow-hidden rounded-md border border-gray-200">
+      </div>
+    );
+  }
+
+  // Calculate total price for all items in the cart
+  const totalPrice = orders.reduce((total, order) => {
+    return (
+      total +
+      order.orderItems.reduce(
+        (orderTotal, item) =>
+          orderTotal +
+          calculateTotalPrice(item.price.toString(), item.quantity),
+        0
+      )
+    );
+  }, 0);
+
+  return (
+    <div className="mx-5 md:mx-20 my-8 md:my-16">
+      <h1 className="text-xl font-medium text-gray-900">Your Cart</h1>
+      <div className="space-y-6">
+        <div className="p-6 divide-y divide-gray-200">
+          {orders.map((order) => (
+            <div key={order.id}>
+              {order.orderItems.map((item) => (
+                <div key={item.id}>
+                  <div className="flex gap-4 items-center py-6">
+                    <div className="flex items-center space-x-4 w-full">
+                      <div className="size-28 shrink-0 overflow-hidden rounded-md border border-gray-200">
+                        {item.productImage ? (
                           <Image
                             src={item.productImage}
                             alt={item.productName}
@@ -123,62 +213,55 @@ function CartPage() {
                             className="w-full object-cover"
                             style={{ height: 130 }}
                           />
+                        ) : (
+                          <div className="w-full h-[130px] flex items-center justify-center bg-gray-100 text-gray-400">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+                      <div className="font-medium text-gray-900 w-full">
+                        <div className="md:flex md:justify-between items-center">
+                          <h3>{item.productName}</h3>
+                          <p>{formatCurrency(item.price * item.quantity)}</p>
                         </div>
-                        <div className="font-medium text-gray-900 w-full">
-                          <div className="md:flex md:justify-between items-center">
-                            <h3>{item.productName}</h3>
-                            <p>{formatCurrency(item.price)}</p>
-                          </div>
-                          <div className="flex justify-between items-center w-full mt-5">
-                            <p className="text-gray-500 text-sm">
-                              Qty: {item.quantity}
-                            </p>
-                            <button
-                              className="text-red-500"
-                              onClick={() => handleRemoveItem(item.id)}
-                            >
-                              Remove
-                            </button>
-                          </div>
+                        <div className="flex justify-between items-center w-full mt-5">
+                          <p className="text-gray-500 text-sm">
+                            Qty: {item.quantity}
+                          </p>
+                          <button
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="text-red-500"
+                          >
+                            Remove
+                          </button>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-
-                <div className="border-t border-gray-200 py-6">
-                  <div className="flex justify-between text-base font-medium text-gray-900">
-                    <p>Subtotal</p>
-                    <p>
-                      {formatCurrency(
-                        cart.orderItems.reduce(
-                          (total: number, item: any) =>
-                            total +
-                            calculateTotalPrice(item.price, item.quantity),
-                          0
-                        )
-                      )}
-                    </p>
-                  </div>
-                  <p className="mt-0.5 text-sm text-gray-500">
-                    Shipping and taxes calculated at checkout.
-                  </p>
-                  <div className="mt-6">
-                    <Link
-                      href="/checkout"
-                      className="flex items-center justify-center rounded-md border border-transparent bg-primary-600 px-6 py-2 text-base font-medium text-white shadow-sm hover:bg-primary-700"
-                    >
-                      Checkout
-                    </Link>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ))}
         </div>
-      )}
+
+        {/* Checkout Button - Only show if there are items in the cart */}
+        {totalPrice > 0 && (
+          <div className="border-t border-gray-200 py-6">
+            <div className="flex justify-between text-base font-medium text-gray-900">
+              <p>Subtotal</p>
+              <p>{formatCurrency(totalPrice)}</p>
+            </div>
+            <div className="mt-6">
+              <button
+                onClick={checkout}
+                className="flex items-center justify-center rounded-md border border-transparent bg-primary-600 px-6 py-2 text-base font-medium text-white shadow-sm hover:bg-primary-700"
+              >
+                Checkout
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
-export default CartPage;

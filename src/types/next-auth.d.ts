@@ -9,6 +9,8 @@ declare module "next-auth" {
       email: string;
       role: string; // Tambahkan role
       image: string;
+      address: string;
+      phoneNumber: string;
     };
   }
 
@@ -18,6 +20,8 @@ declare module "next-auth" {
     email: string;
     role: string; // Tambahkan role
     image: string;
+    address: string;
+    phoneNumber: string;
   }
 }
 
@@ -29,6 +33,8 @@ declare module "next-auth/jwt" {
       email: string;
       role: string; // Tambahkan role
       image: string;
+      address: string;
+      phoneNumber: string;
     };
   }
 }
