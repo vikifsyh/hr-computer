@@ -30,6 +30,13 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING     // Pembayaran masih dalam proses atau menunggu
+  PAID        // Pembayaran sudah diterima
+  EXPIRED      // Pembayaran gagal
+}
+
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -65,7 +72,8 @@ model Order {
   updatedAt       DateTime     @updatedAt
   userId          String
   user            User         @relation(fields: [userId], references: [id])
-  status          OrderStatus  @default(PENDING) // Status order, seperti PENDING, COMPLETED, CANCELLED
+  status          String         // Status pesanan (PENDING, COMPLETED, CANCELLED, etc.)
+  paymentStatus   String
   totalPrice      Float        @default(0)
   orderItems      OrderItem[]
 }

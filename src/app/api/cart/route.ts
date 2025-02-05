@@ -16,82 +16,82 @@ export async function GET(req: NextRequest) {
     // Menyaring berdasarkan role
     const userId = session.user.id;
 
-    // Jika user adalah "ADMIN", maka izinkan mengakses semua cart
+    // Jika user adalah "ADMIN", maka izinkan mengakses semua data
     if (session.user.role === "ADMIN") {
-      const carts = await prisma.order.findMany({
-        where: {
-          status: "CART",
-        },
+      // Query untuk mendapatkan semua order data
+      const orders = await prisma.order.findMany({
         include: {
           user: true, // Menyertakan data user
           orderItems: {
             include: {
-              product: true, // Menyertakan data produk
+              product: true, // Menyertakan data produk yang dipesan
             },
           },
         },
       });
 
       // Format data sesuai kebutuhan
-      const formattedCarts = carts.map((cart) => ({
-        id: cart.id,
-        userName: cart.user?.name || "Unknown User",
-        status: cart.status,
-        totalQuantity: cart.orderItems.reduce(
+      const formattedOrders = orders.map((order) => ({
+        id: order.id,
+        userName: order.user?.name || "Unknown User",
+        status: order.status,
+        paymentStatus: order.paymentStatus || "Unpaid",
+        totalQuantity: order.orderItems.reduce(
           (total, item) => total + (item.quantity || 0),
           0
         ),
-        totalItems: cart.orderItems.length, // Menambahkan jumlah total barang
-        orderItems: cart.orderItems.map((item) => ({
+        totalItems: order.orderItems.length,
+        orderItems: order.orderItems.map((item) => ({
           id: item.id,
           productName: item.product.name,
-          productImage: item.product.image,
           quantity: item.quantity,
-          price: item.product.price || 0, // Menyertakan harga per item
+          productImage: item.product.image,
+          price: item.product.price || 0,
         })),
       }));
 
-      return NextResponse.json({ carts: formattedCarts });
+      return NextResponse.json({ orders: formattedOrders });
     }
 
-    // Jika user adalah "USER", hanya dapat melihat cart miliknya
-    const carts = await prisma.order.findMany({
+    // Jika user adalah "USER", hanya dapat melihat data miliknya sendiri
+    const orders = await prisma.order.findMany({
       where: {
-        status: "CART",
-        userId: userId,
+        userId: userId, // Filtering berdasarkan userId
       },
       include: {
         user: true, // Menyertakan data user
         orderItems: {
           include: {
-            product: true, // Menyertakan data produk
+            product: true, // Menyertakan data produk yang dipesan
           },
         },
       },
     });
 
     // Format data sesuai kebutuhan
-    const formattedCarts = carts.map((cart) => ({
-      id: cart.id,
-      userName: cart.user?.name || "Unknown User",
-      status: cart.status,
-      totalQuantity: cart.orderItems.reduce(
+    const formattedOrders = orders.map((order) => ({
+      id: order.id,
+      userName: order.user?.name || "Unknown User",
+      address: order.user?.address || "Unknown Address",
+      status: order.status,
+      paymentStatus: order.paymentStatus || "Unpaid",
+      totalQuantity: order.orderItems.reduce(
         (total, item) => total + (item.quantity || 0),
         0
       ),
-      totalItems: cart.orderItems.length, // Menambahkan jumlah total barang
-      orderItems: cart.orderItems.map((item) => ({
+      totalItems: order.orderItems.length,
+      orderItems: order.orderItems.map((item) => ({
         id: item.id,
         productName: item.product.name,
-        productImage: item.product.image,
         quantity: item.quantity,
-        price: item.product.price || 0, // Menyertakan harga per item
+        price: item.product.price || 0,
+        productImage: item.product.image,
       })),
     }));
 
-    return NextResponse.json({ carts: formattedCarts });
+    return NextResponse.json({ orders: formattedOrders });
   } catch (error) {
-    console.error("Error in GET /api/cart:", error); // Log untuk debugging
+    console.error("Error in GET /api/cart:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }
@@ -99,9 +99,60 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// export async function GET(req: NextRequest) {
+//   const session = await getServerSession(authOptions);
+
+//   if (!session) {
+//     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//   }
+
+//   const { role, id: userId } = session.user;
+
+//   try {
+//     let orders;
+
+//     if (role === "ADMIN") {
+//       // Admin: Lihat semua pesanan
+//       orders = await prisma.order.findMany({
+//         include: {
+//           user: true,
+//           orderItems: {
+//             include: {
+//               product: true,
+//             },
+//           },
+//         },
+//       });
+//     } else if (role === "USER") {
+//       // User: Lihat pesanan milik user
+//       orders = await prisma.order.findMany({
+//         where: {
+//           userId: userId,
+//         },
+//         include: {
+//           orderItems: {
+//             include: {
+//               product: true,
+//             },
+//           },
+//         },
+//       });
+//     }
+
+//     // Jika tidak ada pesanan, kembalikan array kosong
+//     return NextResponse.json({ orders: orders || [] });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error);
+//     return NextResponse.json(
+//       { error: "Internal Server Error" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
 export async function POST(req: NextRequest) {
   // Mengambil session
-  const session = await getServerSession(authOptions); // Pastikan authOptions dikirim dengan benar
+  const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -118,12 +169,14 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Jika tidak ada, buat keranjang baru
+  // Jika tidak ada, buat keranjang baru dengan status 'CART' dan set paymentStatus ke 'PENDING'
   if (!cart) {
     cart = await prisma.order.create({
       data: {
         userId,
         status: "CART",
+        paymentStatus: "PENDING", // Menambahkan paymentStatus dengan nilai default 'PENDING'
+        totalPrice: 0, // Inisialisasi totalPrice sebagai 0
       },
     });
   }
@@ -137,10 +190,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });
   }
 
-  // Pastikan harga produk adalah number, dengan mengonversinya jika perlu
-  const price = parseFloat(product.price as string); // Jika price berupa string, ubah menjadi number
+  // Pastikan harga produk adalah number
+  const price = parseFloat(product.price as string);
 
-  // Cek jika harga tidak valid (misalnya NaN atau null)
   if (isNaN(price)) {
     return NextResponse.json(
       { error: "Invalid product price" },
@@ -148,17 +200,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Gunakan harga produk dari database saat membuat orderItem
+  // Buat item baru di orderItems
   const orderItem = await prisma.orderItem.create({
     data: {
       orderId: cart.id,
       productId,
-
-      price, // Harga sudah dipastikan berupa number
+      price,
+      quantity,
     },
   });
 
-  return NextResponse.json(orderItem);
+  // Hitung total harga semua item dalam keranjang
+  const orderItems = await prisma.orderItem.findMany({
+    where: {
+      orderId: cart.id,
+    },
+  });
+
+  const totalPrice = orderItems.reduce(
+    (total, item) => total + item.price * (item.quantity || 1),
+    0
+  );
+
+  // Perbarui totalPrice di tabel order
+  await prisma.order.update({
+    where: { id: cart.id },
+    data: { totalPrice },
+  });
+
+  return NextResponse.json({ orderItem, totalPrice });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -170,22 +240,23 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
-
-    // Mengambil `id` dari query parameter
+    // Mendapatkan parameter `id` dari URL
     const { searchParams } = new URL(req.url);
-    const orderItemId = searchParams.get("id");
+    const itemId = searchParams.get("id");
 
-    if (!orderItemId) {
+    if (!itemId) {
       return NextResponse.json(
-        { error: "Missing id parameter" },
+        { error: "Item ID is required" },
         { status: 400 }
       );
     }
 
+    // Cek apakah item yang diminta milik user yang sedang login
     const orderItem = await prisma.orderItem.findUnique({
-      where: { id: orderItemId },
-      include: { order: true },
+      where: { id: itemId },
+      include: {
+        order: true, // Sertakan informasi tentang order
+      },
     });
 
     if (!orderItem) {
@@ -195,29 +266,27 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    if (orderItem.order.userId !== userId && session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    await prisma.orderItem.delete({
-      where: { id: orderItemId },
-    });
-
-    return NextResponse.json({ message: "Order item deleted successfully" });
-  } catch (error) {
-    // Persempit tipe error
-    if (error instanceof Error) {
-      console.error("Error in DELETE /api/cart:", error.message);
+    // Pastikan user yang login adalah pemilik order atau admin
+    if (
+      orderItem.order.userId !== session.user.id &&
+      session.user.role !== "ADMIN"
+    ) {
       return NextResponse.json(
-        { error: "Internal Server Error", details: error.message },
-        { status: 500 }
+        { error: "Unauthorized access" },
+        { status: 403 }
       );
     }
 
-    // Jika tipe error tidak diketahui
-    console.error("Unknown error in DELETE /api/cart:", error);
+    // Hapus item
+    await prisma.orderItem.delete({
+      where: { id: itemId },
+    });
+
+    return NextResponse.json({ message: "Item deleted successfully" });
+  } catch (error) {
+    console.error("Error in DELETE /api/cart:", error);
     return NextResponse.json(
-      { error: "Internal Server Error", details: "Unknown error occurred" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }

@@ -20,36 +20,42 @@ export default function Navbar() {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [cartTotal, setCartTotal] = useState(0);
+  const [orders, setOrders] = useState([]); // Add state to store orders
 
-  const fetchCartTotal = async () => {
-    if (session?.user) {
+  useEffect(() => {
+    const fetchOrders = async () => {
       try {
-        const response = await fetch("/api/cart", {
-          method: "GET",
-        });
-        const data = await response.json();
-        if (data?.carts) {
-          // Calculate the total items in the cart
-          const totalItems = data.carts.reduce(
-            (total: any, cart: any) =>
-              total +
-              cart.orderItems.reduce(
-                (sum: any, item: any) => sum + item.quantity,
-                0
-              ),
-            0
-          );
-          setCartTotal(totalItems);
+        const response = await fetch("/api/cart"); // Ambil data dari API cart
+        if (!response.ok) {
+          throw new Error("Failed to fetch orders");
         }
-      } catch (error) {
-        console.error("Error fetching cart data:", error);
+
+        const data = await response.json();
+        setOrders(data.orders); // Menyimpan data pesanan
+
+        // Menghitung total item dalam cart
+        const totalItems = data.orders.reduce(
+          (total: number, order: any) =>
+            total +
+            order.orderItems.reduce(
+              (sum: number, item: any) => sum + item.quantity,
+              0
+            ),
+          0
+        );
+        setCartTotal(totalItems); // Set total item
+      } catch (err) {
+        console.error("Failed to load orders:", err);
       }
-    }
-  };
+    };
+
+    fetchOrders();
+  }, []);
 
   useEffect(() => {
     if (status === "authenticated") {
-      fetchCartTotal();
+      // If user is authenticated, you could call fetchCartTotal if needed
+      // If fetchCartTotal is necessary, create the function and use it here
     }
   }, [status, session]);
 
@@ -60,6 +66,7 @@ export default function Navbar() {
   const closeDropdown = () => {
     setIsOpen(false);
   };
+
   const pathname = usePathname();
 
   const toggleDropdown = () => {
