@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       const formattedOrders = orders.map((order) => ({
         id: order.id,
         userName: order.user?.name || "Unknown User",
-        status: order.status,
+        status: order.shippingStatus,
         paymentStatus: order.paymentStatus || "Unpaid",
         totalQuantity: order.orderItems.reduce(
           (total, item) => total + (item.quantity || 0),
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       id: order.id,
       userName: order.user?.name || "Unknown User",
       address: order.user?.address || "Unknown Address",
-      status: order.status,
+      status: order.shippingStatus,
       paymentStatus: order.paymentStatus || "Unpaid",
       totalQuantity: order.orderItems.reduce(
         (total, item) => total + (item.quantity || 0),
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
   let cart = await prisma.order.findFirst({
     where: {
       userId,
-      status: "CART",
+      shippingStatus: "DIKEMAS",
     },
   });
 
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
     cart = await prisma.order.create({
       data: {
         userId,
-        status: "CART",
+        shippingStatus: "DIKEMAS",
         paymentStatus: "PENDING", // Menambahkan paymentStatus dengan nilai default 'PENDING'
         totalPrice: 0, // Inisialisasi totalPrice sebagai 0
       },
