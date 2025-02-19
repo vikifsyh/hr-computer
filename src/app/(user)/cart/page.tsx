@@ -118,20 +118,25 @@ export default function Page() {
 
       window.snap.pay(token, {
         onSuccess: function (result: any) {
-          console.log("Payment Success:", result);
-          alert("Payment successful!");
-          router.push("/order-success"); // Redirect ke halaman sukses
+          console.log("Payment success:", result);
+
+          fetch("/api/payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: result.order_id.split("-")[1], // Ambil ID asli dari `order-<id>-<timestamp>`
+              paymentStatus: "COMPLETED",
+            }),
+          })
+            .then((res) => res.json())
+            .then((data) => console.log("Updated Order:", data))
+            .catch((err) => console.error("Error updating order:", err));
         },
         onPending: function (result: any) {
-          console.log("Payment Pending:", result);
-          alert("Payment is pending. Please complete the transaction.");
+          console.log("Payment pending:", result);
         },
         onError: function (result: any) {
-          console.log("Payment Error:", result);
-          alert("Payment failed. Please try again.");
-        },
-        onClose: function () {
-          alert("Payment popup closed without completing the transaction.");
+          console.log("Payment failed:", result);
         },
       });
     } catch (error) {

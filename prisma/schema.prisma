@@ -23,19 +23,6 @@ enum CategoryEnum {
   SPAREPART
 }
 
-enum OrderStatus {
-  CART
-  PENDING
-  COMPLETED
-  CANCELLED
-}
-
-enum PaymentStatus {
-  PENDING     // Pembayaran masih dalam proses atau menunggu
-  PAID        // Pembayaran sudah diterima
-  EXPIRED      // Pembayaran gagal
-}
-
 
 model User {
   id            String    @id @default(cuid())
@@ -72,7 +59,8 @@ model Order {
   updatedAt       DateTime     @updatedAt
   userId          String
   user            User         @relation(fields: [userId], references: [id])
-  status          String         // Status pesanan (PENDING, COMPLETED, CANCELLED, etc.)
+  shippingStatus  String       @default("DIKEMAS")
+  trackingNumber  String?
   paymentStatus   String
   totalPrice      Float        @default(0)
   orderItems      OrderItem[]
@@ -88,6 +76,7 @@ model OrderItem {
   product         Product    @relation(fields: [productId], references: [id])
   quantity        Int        @default(1)
   price           Float
+  isDeleted       Boolean @default(false)
 }
 
 

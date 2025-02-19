@@ -51,7 +51,7 @@ const LoginPage = () => {
       });
 
       if (res?.ok) {
-        router.push("/");
+        router.push("/admin");
       } else {
         setError("Failed! Invalid email or password.");
       }

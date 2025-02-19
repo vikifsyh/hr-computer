@@ -1,138 +1,118 @@
-// "use client";
-// import Breadcrumb from "@/components/ui/Breadcrumb";
-// import Image from "next/image";
-// import React, { useEffect, useState } from "react";
+"use client";
 
-// interface OrderItem {
-//   id: string;
-//   productName: string;
-//   quantity: number;
-//   price: number;
-// }
+import Breadcrumb from "@/components/ui/Breadcrumb";
+import { useEffect, useState } from "react";
 
-// interface Order {
-//   id: string;
-//   userName: string;
-//   address: string; // Assuming address is part of the order data
-//   orderItems: OrderItem[];
-//   status: string;
-//   paymentStatus: string;
-// }
+type OrderItem = {
+  id: string;
+  product: {
+    name: string;
+  };
+  quantity: number;
+};
 
-// export default function Page() {
-//   const [orders, setOrders] = useState<Order[]>([]);
-//   const [loading, setLoading] = useState<boolean>(true);
-//   const [error, setError] = useState<string | null>(null);
+type Order = {
+  id: string;
+  user: {
+    name: string;
+    email: string;
+    address: string; // Tambahkan address di sini
+  };
+  totalPrice: number;
+  paymentStatus: string;
 
-//   useEffect(() => {
-//     // Fetch the orders from API
-//     const fetchOrders = async () => {
-//       try {
-//         const response = await fetch("/api/cart");
-//         if (!response.ok) {
-//           throw new Error("Failed to fetch orders");
-//         }
+  orderItems: OrderItem[];
+};
 
-//         const data = await response.json();
-//         setOrders(data.orders); // Assuming the response contains an array of orders
-//         setLoading(false);
-//       } catch (err) {
-//         setError("Failed to load orders");
-//         setLoading(false);
-//       }
-//     };
+export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-//     fetchOrders();
-//   }, []);
+  useEffect(() => {
+    fetch("/api/order")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setOrders(data.orders);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError("Failed to load orders");
+        setLoading(false);
+      });
+  }, []);
 
-//   const calculateTotalPrice = (price: string, quantity: number): number => {
-//     return parseFloat(price) * quantity; // Calculate total price per item
-//   };
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+    }).format(amount);
+  };
 
-//   const formatCurrency = (value: number): string => {
-//     return value.toLocaleString("id-ID", {
-//       style: "currency",
-//       currency: "IDR",
-//     });
-//   };
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
-//   if (loading) {
-//     return (
-//       <main className="flex-1 p-4 sm:ml-72 sm:mr-10 my-10 rounded-lg bg-white">
-//         <Breadcrumb />
-//         <div className="bg-primary-50 p-4 rounded-lg">
-//           <h1 className="font-bold text-2xl mb-4">Order Management</h1>
-//           <p>Loading...</p>
-//         </div>
-//       </main>
-//     );
-//   }
+  return (
+    <main className="flex-1 p-4 sm:ml-72 sm:mr-10 my-10 rounded-lg bg-white">
+      <Breadcrumb />
+      <div className="bg-primary-50 p-4 rounded-lg">
+        <h1 className="font-bold text-2xl">Order Management</h1>
+        <div className="relative overflow-x-auto mt-5">
+          <table className="w-full text-sm text-left rtl:text-right text-gray-500 ">
+            <thead className="text-xs text-gray-700 uppercase bg-white ">
+              <tr>
+                {/* <th className="border px-4 py-2">Order ID</th> */}
+                <th className="px-6 py-3">Customer</th>
+                <th className="px-6 py-3">Email</th>
+                <th className="px-6 py-3">Address</th>
+                <th className="px-6 py-3">Items</th>
+                <th className="px-6 py-3">Total Price</th>
+                <th className="px-6 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr
+                  key={order.id}
+                  className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
+                >
+                  {/* <td className="border px-4 py-2">{order.id}</td> */}
+                  <th
+                    scope="row"
+                    className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                  >
+                    {order.user.name}
+                  </th>
+                  <td className="px-6 py-4">{order.user.email}</td>
+                  <td className="px-6 py-4">{order.user.address}</td>
+                  <td className="px-6 py-4">
+                    <ul>
+                      {order.orderItems.map((item) => (
+                        <li key={item.id}>
+                          {item.product.name} x {item.quantity}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                  <td className="px-6 py-4">
+                    {formatCurrency(order.totalPrice)}
+                  </td>
 
-//   if (error) {
-//     return (
-//       <main className="flex-1 p-4 sm:ml-72 sm:mr-10 my-10 rounded-lg bg-white">
-//         <Breadcrumb />
-//         <div className="bg-primary-50 p-4 rounded-lg">
-//           <h1 className="font-bold text-2xl mb-4">Order Management</h1>
-//           <p>{error}</p>
-//         </div>
-//       </main>
-//     );
-//   }
-
-//   return (
-//     <main className="flex-1 p-4 sm:ml-72 sm:mr-10 my-10 rounded-lg bg-white">
-//       <Breadcrumb />
-//       <div className="bg-primary-50 p-4 rounded-lg">
-//         <h1 className="font-bold text-2xl mb-4">Order Management</h1>
-//         <div className="overflow-x-auto">
-//           <table className="min-w-full table-auto">
-//             <thead>
-//               <tr>
-//                 <th className="border px-4 py-2">Order ID</th>
-//                 <th className="border px-4 py-2">User Name</th>
-//                 <th className="border px-4 py-2">Address</th>
-//                 <th className="border px-4 py-2">Order Items</th>
-//                 <th className="border px-4 py-2">Total Price</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {orders.map((order) => (
-//                 <tr key={order.id}>
-//                   <td className="border px-4 py-2">{order.id}</td>
-//                   <td className="border px-4 py-2">{order.userName}</td>
-//                   <td className="border px-4 py-2">{order.address}</td>
-//                   <td>{order.paymentStatus}</td>
-//                   <td>{order.status}</td>
-//                   <td className="border px-4 py-2">
-//                     <ul>
-//                       {order.orderItems.map((item) => (
-//                         <li key={item.id}>
-//                           {item.productName} - {item.quantity} pcs @{" "}
-//                           {formatCurrency(item.price * item.quantity)}
-//                         </li>
-//                       ))}
-//                     </ul>
-//                   </td>
-//                   <td className="border px-4 py-2">
-//                     {formatCurrency(
-//                       order.orderItems.reduce(
-//                         (total, item) =>
-//                           total +
-//                           calculateTotalPrice(
-//                             item.price.toString(),
-//                             item.quantity
-//                           ),
-//                         0
-//                       )
-//                     )}
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-//     </main>
-//   );
-// }
+                  <td className="px-6 py-4">
+                    <span className="p-1 bg-green-200 text-green-700 rounded-md font-bold">
+                      {order.paymentStatus}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  );
+}
