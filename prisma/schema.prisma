@@ -63,6 +63,8 @@ model Order {
   trackingNumber  String?
   paymentStatus   String
   totalPrice      Float        @default(0)
+
+  //relasi dengan orderitem
   orderItems      OrderItem[]
 }
 

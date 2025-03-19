@@ -11,6 +11,7 @@ import HP from "../../../../public/image/HP-PNG.png";
 import Lenovo from "../../../../public/image/lenovo.png";
 import Axio from "../../../../public/image/axio.png";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const aclonica = Aclonica({
   subsets: ["latin"],
@@ -44,6 +45,7 @@ const brands = [
   },
 ];
 export default function Hero() {
+  const router = useRouter();
   return (
     <div className="my-20 relative">
       <div className="md:flex md:justify-between items-center mx-5 md:mx-[100px] my-10 md:my-[100px] ">
@@ -55,7 +57,10 @@ export default function Hero() {
             Dapatkan harga terbaik dan garansi di setiap pembelian, sesuaikan
             anggaranmu tanpa mengorbankan kualitas.
           </p>
-          <button className="bg-primary text-white px-6 py-3 rounded-full mt-5 w-full md:w-auto hover:bg-primary/50">
+          <button
+            onClick={() => router.push("/product")}
+            className="bg-primary text-white px-6 py-3 rounded-full mt-5 w-full md:w-auto hover:bg-primary/50"
+          >
             Beli Sekarang
           </button>
 
