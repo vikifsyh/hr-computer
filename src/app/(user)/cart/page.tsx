@@ -7,17 +7,24 @@ import EmptyCart from "../../../../public/image/emptycart.png";
 interface OrderItem {
   id: string;
   productName: string;
+  productId: string;
   quantity: number;
   price: number;
   productImage: string;
 }
 
-interface Order {
+type Order = {
   id: string;
-  userName: string;
-  address: string;
+  user: {
+    name: string;
+    email: string;
+    address: string; // Tambahkan address di sini
+  };
+  totalPrice: number;
+  paymentStatus: string;
+
   orderItems: OrderItem[];
-}
+};
 
 export default function Page() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -29,6 +36,7 @@ export default function Page() {
   useEffect(() => {
     const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
     const clientKey = process.env.MIDTRANS_CLIENT_KEY || "";
+
     const fetchOrders = async () => {
       try {
         const response = await fetch("/api/cart");
@@ -37,7 +45,11 @@ export default function Page() {
         }
 
         const data = await response.json();
-        setOrders(data.orders);
+        const pendingOrders = data.orders.filter(
+          (order: Order & { paymentStatus?: string }) =>
+            order.paymentStatus === "PENDING"
+        );
+        setOrders(pendingOrders);
         setLoading(false);
       } catch (err) {
         setError("Failed to load orders");
@@ -49,7 +61,7 @@ export default function Page() {
 
     const script = document.createElement("script");
     script.src = snapScript;
-    script.setAttribute("data-client-key", clientKey); // Replace with your client key
+    script.setAttribute("data-client-key", clientKey);
     script.async = true;
     document.body.appendChild(script);
 
@@ -204,10 +216,18 @@ export default function Page() {
         <div className="p-6 divide-y divide-gray-200">
           {orders.map((order) => (
             <div key={order.id}>
+              <p className="text-sm text-gray-500 mt-1">
+                Status:{" "}
+                <span className="font-semibold">{order.paymentStatus}</span>
+              </p>
+
               {order.orderItems.map((item) => (
                 <div key={item.id}>
                   <div className="flex gap-4 items-center py-6">
-                    <div className="flex items-center space-x-4 w-full">
+                    <div
+                      className="flex items-center space-x-4 w-full cursor-pointer"
+                      onClick={() => router.push(`/product/${item.productId}`)}
+                    >
                       <div className="size-28 shrink-0 overflow-hidden rounded-md border border-gray-200">
                         {item.productImage ? (
                           <Image
