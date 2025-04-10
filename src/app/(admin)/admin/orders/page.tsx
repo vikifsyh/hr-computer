@@ -16,11 +16,12 @@ type Order = {
   user: {
     name: string;
     email: string;
-    address: string; // Tambahkan address di sini
+    address: string;
   };
   totalPrice: number;
   paymentStatus: string;
-
+  shippingStatus: string;
+  trackingNumber: string | null;
   orderItems: OrderItem[];
 };
 
@@ -28,23 +29,61 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/order")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setOrders(data.orders);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError("Failed to load orders");
-        setLoading(false);
-      });
+    fetchOrders();
   }, []);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/order");
+      const data = await res.json();
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setOrders(data.orders);
+      }
+    } catch (err) {
+      setError("Failed to load orders");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdate = async (
+    orderId: string,
+    shippingStatus: string,
+    trackingNumber: string
+  ) => {
+    setUpdatingOrderId(orderId);
+    try {
+      const res = await fetch("/api/order", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId,
+          shippingStatus,
+          trackingNumber: shippingStatus === "DIKIRIM" ? trackingNumber : null,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        console.error("Update failed:", error);
+        return;
+      }
+
+      await fetchOrders();
+    } catch (error) {
+      console.error("Error updating order:", error);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -60,18 +99,20 @@ export default function AdminOrdersPage() {
     <main className="flex-1 p-4 sm:ml-72 sm:mr-10 my-10 rounded-lg bg-white">
       <Breadcrumb />
       <div className="bg-primary-50 p-4 rounded-lg">
-        <h1 className="font-bold text-2xl">Order Management</h1>
+        <h1 className="font-bold text-2xl mb-4">Order Management</h1>
         <div className="relative overflow-x-auto mt-5">
-          <table className="w-full text-sm text-left rtl:text-right text-gray-500 ">
-            <thead className="text-xs text-gray-700 uppercase bg-white ">
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-white">
               <tr>
-                {/* <th className="border px-4 py-2">Order ID</th> */}
                 <th className="px-6 py-3">Customer</th>
                 <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3">Address</th>
                 <th className="px-6 py-3">Items</th>
-                <th className="px-6 py-3">Total Price</th>
-                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Total</th>
+                <th className="px-6 py-3">Payment</th>
+                <th className="px-6 py-3">Pengiriman</th>
+                <th className="px-6 py-3">Resi</th>
+                <th className="px-6 py-3">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -80,17 +121,13 @@ export default function AdminOrdersPage() {
                   key={order.id}
                   className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
                 >
-                  {/* <td className="border px-4 py-2">{order.id}</td> */}
-                  <th
-                    scope="row"
-                    className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-                  >
+                  <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                     {order.user.name}
-                  </th>
+                  </td>
                   <td className="px-6 py-4">{order.user.email}</td>
                   <td className="px-6 py-4">{order.user.address}</td>
                   <td className="px-6 py-4">
-                    <ul>
+                    <ul className="list-disc pl-4">
                       {order.orderItems.map((item) => (
                         <li key={item.id}>
                           {item.product.name} x {item.quantity}
@@ -101,11 +138,63 @@ export default function AdminOrdersPage() {
                   <td className="px-6 py-4">
                     {formatCurrency(order.totalPrice)}
                   </td>
-
                   <td className="px-6 py-4">
                     <span className="p-1 bg-green-200 text-green-700 rounded-md font-bold">
                       {order.paymentStatus}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <select
+                      value={order.shippingStatus}
+                      onChange={(e) => {
+                        const updated = orders.map((o) =>
+                          o.id === order.id
+                            ? { ...o, shippingStatus: e.target.value }
+                            : o
+                        );
+                        setOrders(updated);
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    >
+                      <option value="DIKEMAS">DIKEMAS</option>
+                      <option value="DIKIRIM">DIKIRIM</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4">
+                    {order.shippingStatus === "DIKIRIM" ? (
+                      <input
+                        type="text"
+                        placeholder="Nomor Resi"
+                        value={order.trackingNumber || ""}
+                        onChange={(e) => {
+                          const updated = orders.map((o) =>
+                            o.id === order.id
+                              ? { ...o, trackingNumber: e.target.value }
+                              : o
+                          );
+                          setOrders(updated);
+                        }}
+                        className="border border-gray-300 rounded px-5 py-1 text-lg w-72"
+                      />
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() =>
+                        handleUpdate(
+                          order.id,
+                          order.shippingStatus,
+                          order.trackingNumber || ""
+                        )
+                      }
+                      disabled={updatingOrderId === order.id}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1 rounded disabled:opacity-50"
+                    >
+                      {updatingOrderId === order.id ? "Updating..." : "Update"}
+                    </button>
                   </td>
                 </tr>
               ))}

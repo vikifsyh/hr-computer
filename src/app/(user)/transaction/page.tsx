@@ -73,12 +73,9 @@ const Orders: React.FC = () => {
       });
 
       if (!response.ok) throw new Error("Failed to update shipping status");
-      const updatedOrder = await response.json();
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId ? updatedOrder.order : order
-        )
-      );
+
+      // ✅ Redirect setelah update sukses
+      window.location.href = "/transaction"; // Ganti dengan halaman tujuan setelah selesai
     } catch (err) {
       setError("Failed to update shipping status");
     }

@@ -221,9 +221,9 @@ export default function Navbar() {
                     className="inline-flex w-full justify-between items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     My Cart
-                    <span className="bg-primary text-white w-6 h-6 rounded-full items-center flex justify-center">
+                    {/* <span className="bg-primary text-white w-6 h-6 rounded-full items-center flex justify-center">
                       {cartTotal}
-                    </span>
+                    </span> */}
                   </Link>
                 </li>
                 <li>
@@ -232,9 +232,9 @@ export default function Navbar() {
                     className="inline-flex w-full justify-between items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Transaction History
-                    <span className="bg-primary text-white w-6 h-6 rounded-full items-center flex justify-center">
+                    {/* <span className="bg-primary text-white w-6 h-6 rounded-full items-center flex justify-center">
                       {cartTotal}
-                    </span>
+                    </span> */}
                   </Link>
                 </li>
                 <li>

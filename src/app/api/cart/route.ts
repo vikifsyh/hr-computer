@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
         quantity: item.quantity,
         price: item.product.price || 0,
         productImage: item.product.image,
+        productId: item.product.id,
       })),
     }));
 
@@ -166,6 +167,7 @@ export async function POST(req: NextRequest) {
     where: {
       userId,
       shippingStatus: "DIKEMAS",
+      paymentStatus: "PENDING",
     },
   });
 

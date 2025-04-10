@@ -6,11 +6,9 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
-        <Sidebar />
-        {children}
-      </body>
-    </html>
+    <>
+      <Sidebar />
+      {children}
+    </>
   );
 }

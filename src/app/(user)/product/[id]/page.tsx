@@ -118,12 +118,20 @@ export default function DetailProduct() {
                   Add to cart
                 </button>
 
-                <button
-                  className="text-white mt-4 sm:mt-0 bg-primary hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-primary-600 dark:hover:bg-primary-700 focus:outline-none dark:focus:ring-primary-800 flex items-center justify-center"
-                  role="button"
+                <Link
+                  href={`https://wa.me/6281225661530?text=${encodeURIComponent(
+                    `Halo, saya tertarik dengan produk *${
+                      product.name
+                    }* seharga *${formatCurrency(
+                      product.price
+                    )}*. Apakah bisa nego?`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white mt-4 sm:mt-0 bg-primary hover:bg-primary-800 focus:ring-2 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center justify-center"
                 >
-                  Proceed to payment
-                </button>
+                  Nego via WhatsApp
+                </Link>
               </div>
 
               <hr className="my-6 md:my-8 border-gray-200 dark:border-gray-800" />
