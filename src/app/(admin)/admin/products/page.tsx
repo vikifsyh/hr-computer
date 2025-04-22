@@ -2,6 +2,7 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 interface Product {
   id: string;
@@ -35,6 +36,23 @@ const Page: React.FC = () => {
 
   // Example categories, you can fetch these from an API if needed
   const categories = ["LAPTOP", "SPAREPART"];
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 5;
+
+  // Pagination calculations
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = products.slice(
+    indexOfFirstProduct,
+    indexOfLastProduct
+  );
+  const totalPages = Math.ceil(products.length / productsPerPage);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   // Fetch all products
   const fetchProducts = async (): Promise<void> => {
@@ -243,7 +261,7 @@ const Page: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              {products.map((product) => (
+              {currentProducts.map((product) => (
                 <tbody key={product.id}>
                   <tr className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                     <th
@@ -275,6 +293,41 @@ const Page: React.FC = () => {
                 </tbody>
               ))}
             </table>
+            <div className="flex justify-between items-center mt-6">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-1 bg-primary text-white rounded disabled:opacity-50 hover:bg-primary-600"
+              >
+                <ChevronLeftIcon className="w-5 h-5 text-white" />
+              </button>
+
+              <div className="space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => goToPage(page)}
+                      className={`px-3 py-1 rounded ${
+                        page === currentPage
+                          ? "bg-primary text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-1 bg-primary text-white rounded disabled:opacity-50 hover:bg-primary-600"
+              >
+                <ChevronRightIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

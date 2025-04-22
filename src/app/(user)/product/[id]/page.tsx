@@ -119,7 +119,7 @@ export default function DetailProduct() {
                 </button>
 
                 <Link
-                  href={`https://wa.me/6281225661530?text=${encodeURIComponent(
+                  href={`https://wa.me/6285848706395?text=${encodeURIComponent(
                     `Halo, saya tertarik dengan produk *${
                       product.name
                     }* seharga *${formatCurrency(
