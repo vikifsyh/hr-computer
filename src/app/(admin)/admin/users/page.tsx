@@ -19,6 +19,16 @@ export default function UserManagementPage() {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({});
   const [isClient, setIsClient] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const indexOfLastUser = currentPage * itemsPerPage;
+  const indexOfFirstUser = indexOfLastUser - itemsPerPage;
+  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   useEffect(() => {
     setIsClient(true);
@@ -84,8 +94,8 @@ export default function UserManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {Array.isArray(users) && users.length > 0 ? (
-                users.map((user) => (
+              {currentUsers.length > 0 ? (
+                currentUsers.map((user) => (
                   <tr
                     key={user.id}
                     className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
@@ -99,14 +109,6 @@ export default function UserManagementPage() {
                     <td className="px-6 py-4">{user.email}</td>
                     <td className="px-6 py-4">{user.address || "-"}</td>
                     <td className="px-6 py-4">{user.phoneNumber}</td>
-                    {/* <td className="px-6 py-4 flex items-center gap-2">
-                      <button onClick={() => handleEdit(user.id)}>
-                        <PencilSquareIcon className="w-6 h-6 text-primary-600" />
-                      </button>
-                      <button onClick={() => handleDelete(user.id)}>
-                        <TrashIcon className="w-6 h-6 text-primary-600" />
-                      </button>
-                    </td> */}
                   </tr>
                 ))
               ) : (
@@ -120,51 +122,47 @@ export default function UserManagementPage() {
           </table>
         </div>
 
-        {/* {isEditing && (
-          <div className="mt-6 p-4 border rounded bg-gray-50">
-            <h2 className="font-bold text-lg">Edit User</h2>
-            <div className="mt-4">
-              <label className="block font-medium">Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name || ""}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-            <div className="mt-4">
-              <label className="block font-medium">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email || ""}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-            <div className="mt-4">
-              <label className="block font-medium">Address</label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address || ""}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-            <div className="mt-4">
-              <label className="block font-medium">Phone Number</label>
-              <input
-                type="text"
-                name="phoneNumber"
-                value={formData.phoneNumber || ""}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
+        {/* Pagination */}
+        {users.length > itemsPerPage && (
+          <div className="flex justify-end my-6">
+            <nav
+              className="inline-flex rounded-md shadow-sm"
+              aria-label="Pagination"
+            >
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 rounded-l-md"
+              >
+                Prev
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => paginate(page)}
+                    className={`px-4 py-2 border text-sm font-medium ${
+                      currentPage === page
+                        ? "bg-primary text-white border-primary"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 rounded-r-md"
+              >
+                Next
+              </button>
+            </nav>
           </div>
-        )} */}
+        )}
       </div>
     </main>
   );

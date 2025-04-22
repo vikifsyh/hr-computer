@@ -31,6 +31,10 @@ export default function AdminOrdersPage() {
   const [error, setError] = useState("");
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   useEffect(() => {
     fetchOrders();
   }, []);
@@ -92,6 +96,14 @@ export default function AdminOrdersPage() {
     }).format(amount);
   };
 
+  // Pagination logic
+  const indexOfLastOrder = currentPage * itemsPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - itemsPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(orders.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
@@ -116,7 +128,7 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {currentOrders.map((order) => (
                 <tr
                   key={order.id}
                   className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
@@ -139,10 +151,17 @@ export default function AdminOrdersPage() {
                     {formatCurrency(order.totalPrice)}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="p-1 bg-green-200 text-green-700 rounded-md font-bold">
+                    <span
+                      className={`p-1 rounded-md font-bold ${
+                        order.paymentStatus === "PENDING"
+                          ? "bg-yellow-200 text-yellow-800"
+                          : "bg-green-200 text-green-700"
+                      }`}
+                    >
                       {order.paymentStatus}
                     </span>
                   </td>
+
                   <td className="px-6 py-4">
                     <select
                       value={order.shippingStatus}
@@ -180,7 +199,6 @@ export default function AdminOrdersPage() {
                       "-"
                     )}
                   </td>
-
                   <td className="px-6 py-4">
                     <button
                       onClick={() =>
@@ -200,6 +218,48 @@ export default function AdminOrdersPage() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          {orders.length > itemsPerPage && (
+            <div className="flex justify-end my-6">
+              <nav
+                className="inline-flex rounded-md shadow-sm"
+                aria-label="Pagination"
+              >
+                <button
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 rounded-l-md"
+                >
+                  Prev
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => paginate(page)}
+                      className={`px-4 py-2 border text-sm font-medium ${
+                        currentPage === page
+                          ? "bg-primary text-white border-primary"
+                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 rounded-r-md"
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          )}
         </div>
       </div>
     </main>

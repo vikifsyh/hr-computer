@@ -141,7 +141,10 @@ export default function Page() {
             }),
           })
             .then((res) => res.json())
-            .then((data) => console.log("Updated Order:", data))
+            .then((data) => {
+              console.log("Updated Order:", data);
+              router.push("/transaction"); // ✅ Redirect setelah sukses
+            })
             .catch((err) => console.error("Error updating order:", err));
         },
         onPending: function (result: any) {

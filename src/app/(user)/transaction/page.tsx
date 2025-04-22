@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
 // Define TypeScript interfaces
@@ -133,9 +134,18 @@ const Orders: React.FC = () => {
               {order.shippingStatus === "DIKIRIM" && (
                 <div className="mt-2">
                   <span className="font-medium text-gray-700">No Resi: </span>
-                  <span className="text-primary">
-                    {order.trackingNumber || "Not Available"}
-                  </span>
+                  {order.trackingNumber ? (
+                    <Link
+                      href={`https://cekresi.com/?noresi=${order.trackingNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline hover:text-primary/70 cursor-pointer"
+                    >
+                      {order.trackingNumber}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-500">Not Available</span>
+                  )}
                 </div>
               )}
 
