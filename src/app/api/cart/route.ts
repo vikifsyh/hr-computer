@@ -100,69 +100,45 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// export async function GET(req: NextRequest) {
-//   const session = await getServerSession(authOptions);
-
-//   if (!session) {
-//     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//   }
-
-//   const { role, id: userId } = session.user;
-
-//   try {
-//     let orders;
-
-//     if (role === "ADMIN") {
-//       // Admin: Lihat semua pesanan
-//       orders = await prisma.order.findMany({
-//         include: {
-//           user: true,
-//           orderItems: {
-//             include: {
-//               product: true,
-//             },
-//           },
-//         },
-//       });
-//     } else if (role === "USER") {
-//       // User: Lihat pesanan milik user
-//       orders = await prisma.order.findMany({
-//         where: {
-//           userId: userId,
-//         },
-//         include: {
-//           orderItems: {
-//             include: {
-//               product: true,
-//             },
-//           },
-//         },
-//       });
-//     }
-
-//     // Jika tidak ada pesanan, kembalikan array kosong
-//     return NextResponse.json({ orders: orders || [] });
-//   } catch (error) {
-//     console.error("Error fetching orders:", error);
-//     return NextResponse.json(
-//       { error: "Internal Server Error" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
 export async function POST(req: NextRequest) {
-  // Mengambil session
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = session.user.id; // Pastikan userId ada di session
+  const userId = session.user.id;
   const { productId, quantity } = await req.json();
 
-  // Cek apakah ada keranjang dengan status 'CART' untuk user
+  // Cek apakah quantity yang diminta lebih besar dari stok produk
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+  });
+
+  if (!product || product.stock === null) {
+    return NextResponse.json(
+      { error: "Product not found or out of stock" },
+      { status: 404 }
+    );
+  }
+
+  // Pastikan quantity tidak melebihi stok produk
+  if (quantity > product.stock) {
+    return NextResponse.json(
+      { error: `Only ${product.stock} items available in stock` },
+      { status: 400 }
+    );
+  }
+
+  // Cek jika quantity lebih besar dari 1, dan stok produk hanya 1
+  if (product.stock === 1 && quantity > 1) {
+    return NextResponse.json(
+      { error: "Stock is limited to 1 item only" },
+      { status: 400 }
+    );
+  }
+
+  // Jika tidak ada keranjang, buat keranjang baru
   let cart = await prisma.order.findFirst({
     where: {
       userId,
@@ -171,28 +147,17 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Jika tidak ada, buat keranjang baru dengan status 'CART' dan set paymentStatus ke 'PENDING'
   if (!cart) {
     cart = await prisma.order.create({
       data: {
         userId,
         shippingStatus: "DIKEMAS",
-        paymentStatus: "PENDING", // Menambahkan paymentStatus dengan nilai default 'PENDING'
-        totalPrice: 0, // Inisialisasi totalPrice sebagai 0
+        paymentStatus: "PENDING",
+        totalPrice: 0,
       },
     });
   }
 
-  // Ambil harga produk dari database berdasarkan productId
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-  });
-
-  if (!product) {
-    return NextResponse.json({ error: "Product not found" }, { status: 404 });
-  }
-
-  // Pastikan harga produk adalah number
   const price = parseFloat(product.price as string);
 
   if (isNaN(price)) {
@@ -235,14 +200,12 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    // Mengambil session
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Mendapatkan parameter `id` dari URL
     const { searchParams } = new URL(req.url);
     const itemId = searchParams.get("id");
 
@@ -253,11 +216,10 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Cek apakah item yang diminta milik user yang sedang login
     const orderItem = await prisma.orderItem.findUnique({
       where: { id: itemId },
       include: {
-        order: true, // Sertakan informasi tentang order
+        order: true,
       },
     });
 
@@ -268,7 +230,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Pastikan user yang login adalah pemilik order atau admin
     if (
       orderItem.order.userId !== session.user.id &&
       session.user.role !== "ADMIN"
@@ -279,10 +240,22 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Hapus item
     await prisma.orderItem.delete({
       where: { id: itemId },
     });
+
+    const product = await prisma.product.findUnique({
+      where: { id: orderItem.productId },
+    });
+
+    if (product && product.stock !== null) {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          stock: product.stock + orderItem.quantity,
+        },
+      });
+    }
 
     return NextResponse.json({ message: "Item deleted successfully" });
   } catch (error) {
@@ -292,4 +265,119 @@ export async function DELETE(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { itemId, newQuantity } = await req.json();
+
+  if (!itemId || typeof newQuantity !== "number") {
+    return NextResponse.json(
+      { error: "Invalid request data" },
+      { status: 400 }
+    );
+  }
+
+  // Cari orderItem berdasarkan itemId
+  const orderItem = await prisma.orderItem.findUnique({
+    where: { id: itemId },
+    include: { product: true, order: true },
+  });
+
+  if (!orderItem || !orderItem.product || !orderItem.order) {
+    return NextResponse.json(
+      { error: "Order item or product not found" },
+      { status: 404 }
+    );
+  }
+
+  // Pastikan hanya user yang punya hak atau admin yang bisa update
+  if (
+    orderItem.order.userId !== session.user.id &&
+    session.user.role !== "ADMIN"
+  ) {
+    return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
+  }
+
+  const availableStock = orderItem.product.stock ?? 0;
+  const currentQuantityInCart = orderItem.quantity ?? 0;
+
+  // Stok tersedia untuk update = stock di product + quantity yang sudah dipesan user
+  const stockAvailableForUpdate = availableStock + currentQuantityInCart;
+
+  if (newQuantity > stockAvailableForUpdate) {
+    return NextResponse.json({ error: "Not enough stock" }, { status: 400 });
+  }
+
+  // Kalau newQuantity 0, hapus item
+  if (newQuantity === 0) {
+    await prisma.orderItem.delete({
+      where: { id: itemId },
+    });
+
+    // Kembalikan stok produk
+    await prisma.product.update({
+      where: { id: orderItem.productId },
+      data: {
+        stock: availableStock + currentQuantityInCart,
+      },
+    });
+
+    // Update total price order setelah hapus
+    const remainingItems = await prisma.orderItem.findMany({
+      where: { orderId: orderItem.orderId },
+    });
+
+    const newTotalPrice = remainingItems.reduce(
+      (total, item) => total + item.price * (item.quantity || 1),
+      0
+    );
+
+    await prisma.order.update({
+      where: { id: orderItem.orderId },
+      data: { totalPrice: newTotalPrice },
+    });
+
+    return NextResponse.json({
+      message: "Item deleted successfully",
+      newTotalPrice,
+    });
+  }
+
+  // Update quantity orderItem
+  const updatedOrderItem = await prisma.orderItem.update({
+    where: { id: itemId },
+    data: { quantity: newQuantity },
+  });
+
+  // Update stok produk setelah perubahan quantity
+  const updatedStock = stockAvailableForUpdate - newQuantity;
+  await prisma.product.update({
+    where: { id: orderItem.productId },
+    data: {
+      stock: updatedStock,
+    },
+  });
+
+  // Hitung total harga order setelah perubahan
+  const orderItems = await prisma.orderItem.findMany({
+    where: { orderId: orderItem.orderId },
+  });
+
+  const totalPrice = orderItems.reduce(
+    (total, item) => total + item.price * (item.quantity || 1),
+    0
+  );
+
+  await prisma.order.update({
+    where: { id: orderItem.orderId },
+    data: { totalPrice },
+  });
+
+  return NextResponse.json({ updatedOrderItem, totalPrice });
 }

@@ -48,7 +48,8 @@ model Product {
   description     String?   @db.Text
   image           String?   @db.Text
   price           String?   @db.Text
-  category      CategoryEnum
+  stock           Int?      @default(0)
+  category        CategoryEnum
   // Relasi dengan OrderItem
   orderItems      OrderItem[]
 }

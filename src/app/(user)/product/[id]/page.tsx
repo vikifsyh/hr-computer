@@ -58,7 +58,7 @@ export default function DetailProduct() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+        body: JSON.stringify({ productId: product.id, stock: 1 }),
       });
 
       if (response.ok) {
@@ -103,9 +103,14 @@ export default function DetailProduct() {
                 {product.name}
               </h1>
               <div className="mt-4 sm:items-center sm:gap-4 sm:flex">
-                <p className="text-2xl font-extrabold text-gray-900 sm:text-3xl dark:text-white">
-                  {formatCurrency(product.price)}
-                </p>
+                <div>
+                  <p className="text-2xl font-extrabold text-gray-900 sm:text-3xl dark:text-white">
+                    {formatCurrency(product.price)}
+                  </p>
+                  <p className="text-sm font-medium text-neutral-400 mt-2">
+                    {product.stock} stock
+                  </p>
+                </div>
               </div>
 
               <div className="mt-6 sm:gap-4 sm:items-center sm:flex sm:mt-8">
@@ -150,6 +155,15 @@ export default function DetailProduct() {
             </div>
           </div>
         </div>
+        <button>
+          <Link
+            href="/cart"
+            className="bg-primary-50 p-2 inline-flex items-center rounded-md text-primary font-medium"
+          >
+            <ShoppingCartIcon className="mr-2 h-4 w-4" />
+            Back to Cart
+          </Link>
+        </button>
       </section>
       <ToastContainer />
     </div>

@@ -70,7 +70,7 @@ const Recommend = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+        body: JSON.stringify({ productId: product.id, stock: 1 }),
       });
 
       if (response.ok) {
@@ -101,8 +101,14 @@ const Recommend = () => {
           : getRandomProducts(products).map((product) => (
               <div
                 key={product.id}
-                className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
+                className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
               >
+                {product.stock === 0 && (
+                  <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
+                    Sold Out
+                  </div>
+                )}
+
                 <div className="">
                   <Link href={`/product/${product.id}`}>
                     <Image
@@ -115,6 +121,7 @@ const Recommend = () => {
                     />
                   </Link>
                 </div>
+
                 <div className="pt-2">
                   <Link
                     href={`/product/${product.id}`}
@@ -165,6 +172,9 @@ const Recommend = () => {
                       </p>
                     </li>
                   </ul>
+                  <p className="flex justify-end text-sm text-neutral-400 font-medium">
+                    ({product.stock}) stock
+                  </p>
                 </div>
 
                 <div className="my-3 flex items-center justify-between gap-4">
@@ -172,8 +182,9 @@ const Recommend = () => {
                     {formatCurrency(product.price)}
                   </p>
                   <button
-                    className="flex-shrink-0 inline-flex items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300"
+                    className="flex-shrink-0 inline-flex items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => handleAddToCart(product)}
+                    disabled={product.stock === 0} // Disable button if out of stock
                   >
                     <ShoppingCartIcon className="h-4 w-4 mr-1" />
                     Add to cart

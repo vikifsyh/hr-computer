@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -11,6 +12,7 @@ interface OrderItem {
   quantity: number;
   price: number;
   productImage: string;
+  stock: number;
 }
 
 type Order = {
@@ -18,11 +20,10 @@ type Order = {
   user: {
     name: string;
     email: string;
-    address: string; // Tambahkan address di sini
+    address: string;
   };
   totalPrice: number;
   paymentStatus: string;
-
   orderItems: OrderItem[];
 };
 
@@ -30,7 +31,8 @@ export default function Page() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [snapLoaded, setSnapLoaded] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null); // Added state for update error
+  const [quantityError, setQuantityError] = useState<string | null>(null); // Added state for quantity error
   const router = useRouter();
 
   useEffect(() => {
@@ -130,8 +132,8 @@ export default function Page() {
 
       window.snap.pay(token, {
         onSuccess: function (result: any) {
-          console.log("Payment success:", result);
-
+          // console.log("Payment success:", result);
+          window.location.replace("/order-history");
           fetch("/api/payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -143,12 +145,12 @@ export default function Page() {
             .then((res) => res.json())
             .then((data) => {
               console.log("Updated Order:", data);
-              router.push("/transaction"); // ✅ Redirect setelah sukses
             })
             .catch((err) => console.error("Error updating order:", err));
         },
         onPending: function (result: any) {
-          console.log("Payment pending:", result);
+          window.location.replace("/order-history");
+          // console.log("Payment pending:", result);
         },
         onError: function (result: any) {
           console.log("Payment failed:", result);
@@ -164,7 +166,6 @@ export default function Page() {
     return (
       <div className="mx-5 md:mx-20 my-8 md:my-16">
         <h1 className="text-xl font-medium text-gray-900">Your Cart</h1>
-        {/* Skeleton loading here */}
       </div>
     );
   }
@@ -199,18 +200,88 @@ export default function Page() {
     );
   }
 
-  // Calculate total price for all items in the cart
-  const totalPrice = orders.reduce((total, order) => {
+  const handleUpdateQuantity = async (
+    itemId: string,
+    newQuantity: number,
+    stock: number
+  ) => {
+    if (newQuantity > stock) {
+      // Show an error message if the quantity exceeds the available stock
+      setQuantityError(
+        `Cannot add more than ${stock} items. Stock is limited.`
+      );
+      return;
+    }
+
+    try {
+      setUpdateError(null); // Reset any previous update error
+      setQuantityError(null); // Reset quantity error
+      const response = await fetch("/api/cart", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ itemId, newQuantity }),
+      });
+
+      if (!response.ok) throw new Error("Not enough stock");
+
+      const data = await response.json();
+
+      // Update the UI after successfully updating quantity
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => ({
+          ...order,
+          orderItems: order.orderItems.map((item) =>
+            item.id === itemId ? { ...item, quantity: newQuantity } : item
+          ),
+        }))
+      );
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      setUpdateError("Not enough stock");
+    }
+  };
+
+  if (
+    orders.length === 0 ||
+    orders.every((order) => order.orderItems.length === 0)
+  ) {
     return (
+      <div className="mx-5 md:mx-20 my-8 md:my-16">
+        <h1 className="text-xl font-medium text-gray-900">Your Cart</h1>
+        <div className="text-center py-4">
+          <div className="max-w-32 mx-auto">
+            <Image
+              src={EmptyCart}
+              alt="Empty Cart"
+              width={1000}
+              height={1000}
+            />
+          </div>
+          <p className="text-lg font-semibold text-gray-700">
+            Your cart is empty.
+          </p>
+          <button
+            onClick={() => router.push("/product")}
+            className="mt-6 text-primary-600 hover:text-primary-400"
+          >
+            Continue Shopping
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const totalPrice = orders.reduce(
+    (total, order) =>
       total +
       order.orderItems.reduce(
-        (orderTotal, item) =>
-          orderTotal +
-          calculateTotalPrice(item.price.toString(), item.quantity),
+        (orderTotal, item) => orderTotal + item.price * item.quantity,
         0
-      )
-    );
-  }, 0);
+      ),
+    0
+  );
 
   return (
     <div className="mx-5 md:mx-20 my-8 md:my-16">
@@ -219,50 +290,90 @@ export default function Page() {
         <div className="p-6 divide-y divide-gray-200">
           {orders.map((order) => (
             <div key={order.id}>
-              <p className="text-sm text-gray-500 mt-1">
-                Status:{" "}
-                <span className="font-semibold">{order.paymentStatus}</span>
-              </p>
-
               {order.orderItems.map((item) => (
-                <div key={item.id}>
-                  <div className="flex gap-4 items-center py-6">
+                <div key={item.id} className="flex gap-4 items-center py-6">
+                  <div className="flex items-center space-x-4 w-full cursor-pointer">
                     <div
-                      className="flex items-center space-x-4 w-full cursor-pointer"
+                      className="size-28 shrink-0 overflow-hidden rounded-md border border-gray-200"
                       onClick={() => router.push(`/product/${item.productId}`)}
                     >
-                      <div className="size-28 shrink-0 overflow-hidden rounded-md border border-gray-200">
-                        {item.productImage ? (
-                          <Image
-                            src={item.productImage}
-                            alt={item.productName}
-                            width={1000}
-                            height={1000}
-                            className="w-full object-cover"
-                            style={{ height: 130 }}
-                          />
-                        ) : (
-                          <div className="w-full h-[130px] flex items-center justify-center bg-gray-100 text-gray-400">
-                            No Image
-                          </div>
-                        )}
-                      </div>
-                      <div className="font-medium text-gray-900 w-full">
-                        <div className="md:flex md:justify-between items-center">
-                          <h3>{item.productName}</h3>
-                          <p>{formatCurrency(item.price * item.quantity)}</p>
+                      {item.productImage ? (
+                        <Image
+                          src={item.productImage}
+                          alt={item.productName}
+                          width={1000}
+                          height={1000}
+                          className="w-full object-cover"
+                          style={{ height: 130 }}
+                        />
+                      ) : (
+                        <div className="w-full h-[130px] flex items-center justify-center bg-gray-100 text-gray-400">
+                          No Image
                         </div>
-                        <div className="flex justify-between items-center w-full mt-5">
-                          <p className="text-gray-500 text-sm">
-                            Qty: {item.quantity}
-                          </p>
+                      )}
+                    </div>
+
+                    <div className="font-medium text-gray-900 w-full">
+                      <div className="md:flex md:justify-between items-center">
+                        <h3>{item.productName}</h3>
+                        <p>{formatCurrency(item.price * item.quantity)}</p>
+                      </div>
+
+                      {/* Quantity Control */}
+                      <div className="flex justify-between items-center mt-3">
+                        <div className="flex gap-2">
                           <button
-                            onClick={() => handleRemoveItem(item.id)}
-                            className="text-red-500"
+                            onClick={() =>
+                              handleUpdateQuantity(
+                                item.id,
+                                item.quantity - 1,
+                                item.stock
+                              )
+                            }
+                            disabled={item.quantity <= 1}
+                            className="bg-gray-200 px-3 py-1 rounded-md"
                           >
-                            Remove
+                            -
+                          </button>
+                          <span className="text-lg">{item.quantity}</span>
+                          <button
+                            onClick={() =>
+                              handleUpdateQuantity(
+                                item.id,
+                                item.quantity + 1,
+                                item.stock
+                              )
+                            }
+                            disabled={item.quantity >= item.stock}
+                            className="bg-gray-200 px-3 py-1 rounded-md"
+                          >
+                            +
                           </button>
                         </div>
+                      </div>
+
+                      {/* Show Error if Quantity exceeds Stock */}
+                      {quantityError && (
+                        <p className="text-red-500 text-sm mt-2">
+                          {quantityError}
+                        </p>
+                      )}
+
+                      {/* Show Error if Update fails */}
+                      {updateError && (
+                        <p className="text-red-500 text-sm mt-2">
+                          {updateError}
+                        </p>
+                      )}
+
+                      {/* Remove Button */}
+                      <div className="flex justify-end items-center w-full mt-5">
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="text-red-500"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -272,7 +383,7 @@ export default function Page() {
           ))}
         </div>
 
-        {/* Checkout Button - Only show if there are items in the cart */}
+        {/* Checkout Button */}
         {totalPrice > 0 && (
           <div className="border-t border-gray-200 py-6">
             <div className="flex justify-between text-base font-medium text-gray-900">

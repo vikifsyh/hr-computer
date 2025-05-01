@@ -29,8 +29,10 @@ const SkeletonLoader = () => {
 const AllProduct = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [error, setError] = useState<string>("");
+
   const [cart, setCart] = useState<any[]>([]);
   const router = useRouter();
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -63,29 +65,6 @@ const AllProduct = () => {
     fetchProducts();
   }, []);
 
-  const handleAddToCart = async (product: any) => {
-    try {
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ productId: product.id, quantity: 1 }),
-      });
-
-      if (response.ok) {
-        const updatedCart = await response.json();
-        setCart(updatedCart);
-        toast.success("Successfully added to cart!");
-      } else {
-        toast.error("Failed to add item to cart");
-      }
-    } catch (error) {
-      console.error("Error adding item to cart:", error);
-      toast.error("Failed to add item to cart");
-    }
-  };
-
   return (
     <div className="mx-5 md:mx-20 my-8 md:my-16">
       {error && <p>{error}</p>}
@@ -101,8 +80,15 @@ const AllProduct = () => {
           : getRandomProducts(products).map((product) => (
               <div
                 key={product.id}
-                className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
+                className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
               >
+                {/* Jika stok habis, tampilkan "Terjual Habis" */}
+                {product.stock === 0 && (
+                  <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
+                    Sold Out
+                  </div>
+                )}
+
                 <div className="">
                   <Link href={`/product/${product.id}`}>
                     <Image
@@ -171,13 +157,9 @@ const AllProduct = () => {
                   <p className="text-xl font-semibold text-gray-900">
                     {formatCurrency(product.price)}
                   </p>
-                  {/* <button
-                    className="flex-shrink-0 inline-flex items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300"
-                    onClick={() => handleAddToCart(product)}
-                  >
-                    <ShoppingCartIcon className="h-4 w-4 mr-1" />
-                    Add to cart
-                  </button> */}
+                  <p className="text-sm text-neutral-400 font-medium">
+                    ({product.stock}) stock
+                  </p>
                 </div>
               </div>
             ))}
@@ -190,8 +172,6 @@ const AllProduct = () => {
           View All
         </button>
       </div>
-      <hr className="my-6 md:my-8 border-gray-200 dark:border-gray-800" />
-      <ToastContainer position="top-right" />
     </div>
   );
 };

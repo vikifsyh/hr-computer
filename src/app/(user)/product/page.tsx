@@ -136,8 +136,15 @@ const ProductList = () => {
           displayedFiles.map((product) => (
             <div
               key={product.id}
-              className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm "
+              className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
             >
+              {/* Jika stok 0, tampilkan label "Terjual Habis" */}
+              {product.quantity === 0 && (
+                <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
+                  Sold Out
+                </div>
+              )}
+
               <div className="">
                 <Link href={`/product/${product.id}`}>
                   <Image
@@ -200,6 +207,9 @@ const ProductList = () => {
                     </p>
                   </li>
                 </ul>
+                <p className="text-sm text-neutral-400 font-medium mt-2 flex justify-end">
+                  ({product.quantity}) stock
+                </p>
               </div>
 
               <div className="mt-3 mb-4 flex items-center justify-between gap-4">
@@ -207,8 +217,9 @@ const ProductList = () => {
                   {formatCurrency(product.price)}
                 </p>
                 <button
-                  className="flex-shrink-0 inline-flex items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4  focus:ring-primary-300"
+                  className="flex-shrink-0 inline-flex items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4  focus:ring-primary-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handleAddToCart(product)}
+                  disabled={product.quantity === 0} // Disable button if out of stock
                 >
                   <ShoppingCartIcon className="h-4 w-4 mr-1" />
                   Add to cart
