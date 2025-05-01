@@ -15,12 +15,11 @@ if (!serverKey || !clientKey) {
   );
 }
 
-let snap = new Midtrans.Snap({
+const snap = new Midtrans.Snap({
   isProduction: false,
-  serverKey: serverKey,
-  clientKey: clientKey,
+  serverKey,
+  clientKey,
 });
-
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -59,7 +58,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, address, phoneNumber } = session.user;
+    const {
+      name = "Guest",
+      email = "noemail@example.com",
+      address = "Address not provided",
+      phoneNumber = "1234567890",
+    } = session.user;
 
     const totalAmount = order.orderItems.reduce((sum, item) => {
       return sum + (item.price || 0) * (item.quantity || 0);
@@ -68,24 +72,27 @@ export async function POST(req: NextRequest) {
     const parameter = {
       item_details: order.orderItems.map((item) => ({
         name: item.product.name,
-        price: item.price,
-        quantity: item.quantity,
+        price: item.price || 0,
+        quantity: item.quantity || 0,
       })),
       transaction_details: {
         order_id: `order-${orderId}-${Date.now()}`,
         gross_amount: totalAmount,
       },
       customer_details: {
-        first_name: name || "Guest",
-        email: email || "noemail@example.com",
-        shipping_address: { address: address || "Address not provided" },
-        phone: phoneNumber || "1234567890",
+        first_name: name,
+        email: email,
+        phone: phoneNumber,
+        shipping_address: {
+          address: address,
+        },
       },
+      callback_url: "http://localhost:3000/order-history",
     };
 
     const token = await snap.createTransaction(parameter);
 
-    // Jika pembayaran selesai, update status & tandai items sebagai "isDeleted"
+    // Update payment status dan tandai orderItems isDeleted jika sudah bayar
     if (paymentStatus === "COMPLETED") {
       await prisma.order.update({
         where: { id: orderId },
@@ -94,7 +101,7 @@ export async function POST(req: NextRequest) {
 
       await prisma.orderItem.updateMany({
         where: { orderId: orderId },
-        data: { isDeleted: true }, // Tandai sebagai dihapus, tapi tidak benar-benar dihapus
+        data: { isDeleted: true }, // Tandai item dihapus setelah pembayaran
       });
     }
 
@@ -102,20 +109,22 @@ export async function POST(req: NextRequest) {
       token,
       paymentStatus: paymentStatus || "PENDING",
       customerDetails: {
-        first_name: name || "Guest",
-        email: email || "noemail@example.com",
-        shipping_address: { address: address || "Address not provided" },
+        first_name: name,
+        email: email,
+        shipping_address: { address: address },
+        phone: phoneNumber,
       },
       items: order.orderItems.map((item) => ({
         name: item.product.name,
         price: item.price,
         quantity: item.quantity,
-        isDeleted: item.isDeleted, // Tambahkan status isDeleted di response
+        isDeleted: item.isDeleted,
       })),
     });
   } catch (error) {
+    console.error("Payment Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error", details: error },
+      { error: "Internal Server Error", details: (error as Error).message },
       { status: 500 }
     );
   }

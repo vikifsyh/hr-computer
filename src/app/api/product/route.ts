@@ -24,8 +24,9 @@ export async function POST(
   const image = (formData.get("image") as File) || null;
   const price = (formData.get("price") as string) || null;
   const category = (formData.get("category") as string) || null;
+  const stock = formData.get("stock") ? Number(formData.get("stock")) : 0; // <-- Mengambil stock dari formData
 
-  // Validate required fields
+  // Validasi field yang diperlukan
   if (!name || !price || !category) {
     return NextResponse.json(
       { error: "Name, price, and category are required fields." },
@@ -33,7 +34,7 @@ export async function POST(
     );
   }
 
-  // Validate category
+  // Validasi kategori
   if (!Object.values(CategoryEnum).includes(category as CategoryEnum)) {
     return NextResponse.json(
       { error: "Invalid category provided." },
@@ -68,7 +69,7 @@ export async function POST(
     fileUrl = `${relativeUploadDir}/${filename}`;
   }
 
-  // Ensure category is passed as CategoryEnum type
+  // Pastikan kategori diberikan sebagai tipe CategoryEnum
   const categoryEnum = category as CategoryEnum;
 
   const result = await prisma.product.create({
@@ -77,6 +78,7 @@ export async function POST(
       description,
       price,
       image: fileUrl,
+      stock, // <-- Gunakan stock di sini
       category: categoryEnum,
     },
   });
@@ -84,7 +86,6 @@ export async function POST(
   return NextResponse.json({ product: result });
 }
 
-// PUT Method: Update Product
 export async function PUT(req: NextRequest) {
   const formData = await req.formData();
   const { searchParams } = new URL(req.url);
@@ -99,6 +100,9 @@ export async function PUT(req: NextRequest) {
   const image = (formData.get("image") as File) || null;
   const price = (formData.get("price") as string) || null;
   const category = (formData.get("category") as string) || null;
+  const stock = formData.get("stock")
+    ? Number(formData.get("stock"))
+    : undefined; // <-- Mengambil quantity dari formData
 
   if (
     category &&
@@ -153,6 +157,7 @@ export async function PUT(req: NextRequest) {
       description,
       price,
       image: fileUrl,
+      stock,
       category: category ? (category as CategoryEnum) : undefined,
     },
   });

@@ -11,6 +11,7 @@ interface Product {
   price: number;
   image?: string;
   category: string; // Add category to product
+  stock: number;
 }
 
 interface FormState {
@@ -20,6 +21,7 @@ interface FormState {
   price: string;
   image: File | null;
   category: string; // Add category to form state
+  stock: number;
 }
 
 const Page: React.FC = () => {
@@ -31,6 +33,7 @@ const Page: React.FC = () => {
     price: "",
     image: null,
     category: "", // Set default value for category
+    stock: 0,
   });
   const [loading, setLoading] = useState(false);
 
@@ -79,6 +82,7 @@ const Page: React.FC = () => {
     formData.append("description", form.description);
     formData.append("price", form.price);
     formData.append("category", form.category); // Append category
+    formData.append("stock", form.stock.toString());
     if (form.image) {
       formData.append("image", form.image);
     }
@@ -103,6 +107,7 @@ const Page: React.FC = () => {
           price: "",
           image: null,
           category: "",
+          stock: 0,
         });
       } else {
         console.error(data.error);
@@ -153,6 +158,7 @@ const Page: React.FC = () => {
       price: product.price.toString(),
       image: null, // Leave image null as it cannot be preloaded
       category: product.category, // Set category
+      stock: product.stock,
     });
   };
 
@@ -205,6 +211,17 @@ const Page: React.FC = () => {
               className="w-full p-2 mb-3 border rounded focus:border-primary outline-none"
               required
             />
+            <input
+              type="number"
+              placeholder="Quantity"
+              value={form.stock}
+              min="0"
+              onChange={
+                (e) => setForm({ ...form, stock: parseInt(e.target.value, 10) }) // pastikan stock diset sebagai angka
+              }
+              className="w-full p-2 mb-3 border rounded focus:border-primary outline-none"
+              required
+            />
             <select
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -254,6 +271,9 @@ const Page: React.FC = () => {
                     Price
                   </th>
                   <th scope="col" className="px-6 py-3">
+                    Quantity
+                  </th>
+                  <th scope="col" className="px-6 py-3">
                     Category
                   </th>
                   <th scope="col" className="px-6 py-3">
@@ -274,6 +294,7 @@ const Page: React.FC = () => {
                     <td className="px-6 py-4">
                       {formatCurrency(product.price)}
                     </td>
+                    <td className="px-6 py-4">{product.stock}</td>
                     <td className="px-6 py-4">{product.category}</td>
                     <td className="px-6 py-4 flex gap-2">
                       <button
