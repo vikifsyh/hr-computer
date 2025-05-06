@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "You haven't logged in yet" },
+        { status: 401 }
+      );
     }
 
     // Menyaring berdasarkan role
@@ -104,13 +107,16 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "You haven't logged in yet" },
+      { status: 401 }
+    );
   }
 
   const userId = session.user.id;
   const { productId, quantity } = await req.json();
 
-  // Cek apakah quantity yang diminta lebih besar dari stok produk
+  // Cek apakah produk tersedia
   const product = await prisma.product.findUnique({
     where: { id: productId },
   });
@@ -122,23 +128,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Pastikan quantity tidak melebihi stok produk
-  if (quantity > product.stock) {
-    return NextResponse.json(
-      { error: `Only ${product.stock} items available in stock` },
-      { status: 400 }
-    );
-  }
-
-  // Cek jika quantity lebih besar dari 1, dan stok produk hanya 1
-  if (product.stock === 1 && quantity > 1) {
-    return NextResponse.json(
-      { error: "Stock is limited to 1 item only" },
-      { status: 400 }
-    );
-  }
-
-  // Jika tidak ada keranjang, buat keranjang baru
+  // Jika tidak ada keranjang aktif, buat keranjang baru
   let cart = await prisma.order.findFirst({
     where: {
       userId,
@@ -167,17 +157,71 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Buat item baru di orderItems
-  const orderItem = await prisma.orderItem.create({
-    data: {
+  // Cek apakah produk sudah ada dalam orderItems
+  const existingItem = await prisma.orderItem.findFirst({
+    where: {
       orderId: cart.id,
       productId,
-      price,
-      quantity,
     },
   });
 
-  // Hitung total harga semua item dalam keranjang
+  let orderItem;
+
+  if (existingItem) {
+    const newQuantity = existingItem.quantity + quantity;
+
+    // Validasi stok (stok tersedia + jumlah lama di cart)
+    const availableStock = product.stock + existingItem.quantity;
+
+    if (newQuantity > availableStock) {
+      return NextResponse.json(
+        { error: `Only ${availableStock} items available in stock` },
+        { status: 400 }
+      );
+    }
+
+    // Update quantity
+    orderItem = await prisma.orderItem.update({
+      where: { id: existingItem.id },
+      data: { quantity: newQuantity },
+    });
+
+    // Update stok produk
+    await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        stock: availableStock - newQuantity,
+      },
+    });
+  } else {
+    // Validasi stok untuk item baru
+    if (quantity > product.stock) {
+      return NextResponse.json(
+        { error: `Only ${product.stock} items available in stock` },
+        { status: 400 }
+      );
+    }
+
+    // Tambahkan item baru ke orderItems
+    orderItem = await prisma.orderItem.create({
+      data: {
+        orderId: cart.id,
+        productId,
+        price,
+        quantity,
+      },
+    });
+
+    // Kurangi stok produk
+    await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        stock: product.stock - quantity,
+      },
+    });
+  }
+
+  // Hitung ulang total harga untuk cart
   const orderItems = await prisma.orderItem.findMany({
     where: {
       orderId: cart.id,
@@ -189,7 +233,7 @@ export async function POST(req: NextRequest) {
     0
   );
 
-  // Perbarui totalPrice di tabel order
+  // Update total harga di order
   await prisma.order.update({
     where: { id: cart.id },
     data: { totalPrice },

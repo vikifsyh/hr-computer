@@ -70,16 +70,17 @@ const LaptopPage: React.FC = () => {
         body: JSON.stringify({ productId: product.id, quantity: 1 }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const updatedCart = await response.json();
-        setCart(updatedCart);
-        toast.success("Successfully added to cart!"); // Show success toast
+        setCart((prev) => [...prev, data.orderItem]); // Simpan jika ingin update UI lokal
+        toast.success("Successfully added to cart!");
       } else {
-        toast.error("Failed to add item to cart"); // Show error toast
+        toast.error(data.error || "Failed to add to cart");
       }
     } catch (error) {
       console.error("Error adding item to cart:", error);
-      toast.error("Failed to add item to cart"); // Show error toast
+      toast.error("Failed to add item to cart");
     }
   };
 
@@ -154,8 +155,13 @@ const LaptopPage: React.FC = () => {
             displayedFiles.map((product) => (
               <div
                 key={product.id}
-                className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm "
+                className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm "
               >
+                {product.stock === 0 && (
+                  <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
+                    Sold Out
+                  </div>
+                )}
                 <div className="">
                   <Link href={`/product/${product.id}`}>
                     <Image
@@ -218,6 +224,9 @@ const LaptopPage: React.FC = () => {
                       </p>
                     </li>
                   </ul>
+                  <p className="text-sm text-neutral-400 font-medium mt-2 flex justify-end">
+                    ({product.stock}) stock
+                  </p>
 
                   <div className="mt-3 mb-4 flex items-center justify-between gap-4">
                     <p className="text-xl font-semibold text-gray-900">

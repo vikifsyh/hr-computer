@@ -70,15 +70,16 @@ const Recommend = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ productId: product.id, stock: 1 }),
+        body: JSON.stringify({ productId: product.id, quantity: 1 }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const updatedCart = await response.json();
-        setCart(updatedCart);
+        setCart((prev) => [...prev, data.orderItem]); // Simpan jika ingin update UI lokal
         toast.success("Successfully added to cart!");
       } else {
-        toast.error("Please Login");
+        toast.error(data.error || "Failed to add to cart");
       }
     } catch (error) {
       console.error("Error adding item to cart:", error);
