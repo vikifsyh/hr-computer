@@ -139,7 +139,7 @@ const ProductList = () => {
               className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
             >
               {/* Jika stok 0, tampilkan label "Terjual Habis" */}
-              {product.quantity === 0 && (
+              {product.stock === 0 && (
                 <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
                   Sold Out
                 </div>
@@ -183,7 +183,7 @@ const ProductList = () => {
                       />
                     </svg>
                     <p className="text-sm font-medium text-gray-500 ">
-                      Fast Delivery
+                      Fast Delivery JJJJJJJJJ
                     </p>
                   </li>
 
@@ -208,7 +208,7 @@ const ProductList = () => {
                   </li>
                 </ul>
                 <p className="text-sm text-neutral-400 font-medium mt-2 flex justify-end">
-                  ({product.quantity}) stock
+                  ({product.stock}) stock
                 </p>
               </div>
 
