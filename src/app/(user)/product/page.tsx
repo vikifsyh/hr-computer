@@ -88,16 +88,17 @@ const ProductList = () => {
         body: JSON.stringify({ productId: product.id, quantity: 1 }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const updatedCart = await response.json();
-        setCart(updatedCart);
-        toast.success("Successfully added to cart!"); // Show success toast
+        setCart((prev) => [...prev, data.orderItem]); // Simpan jika ingin update UI lokal
+        toast.success("Successfully added to cart!");
       } else {
-        toast.error("Please Login"); // Show error toast
+        toast.error(data.error || "Failed to add to cart");
       }
     } catch (error) {
       console.error("Error adding item to cart:", error);
-      toast.error("Please Login"); // Show error toast
+      toast.error("Failed to add item to cart");
     }
   };
 

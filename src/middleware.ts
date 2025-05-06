@@ -21,6 +21,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
+  // Cek akses halaman yang butuh login
+  const protectedPaths = ["/cart"];
+  if (protectedPaths.includes(pathname) && !token) {
+    return NextResponse.redirect(new URL("/signIn", req.url));
+  }
+
   // 3. Jika tidak ada kondisi yang terpenuhi, izinkan akses
   return NextResponse.next();
 }
@@ -28,6 +34,7 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*", // Semua halaman di bawah /admin
+    "/cart",
     "/signIn", // Halaman login
     "/signUp", // Halaman register
   ],

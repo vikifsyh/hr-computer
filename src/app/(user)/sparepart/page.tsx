@@ -70,16 +70,17 @@ const LaptopPage: React.FC = () => {
         body: JSON.stringify({ productId: product.id, quantity: 1 }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const updatedCart = await response.json();
-        setCart(updatedCart);
-        toast.success("Successfully added to cart!"); // Show success toast
+        setCart((prev) => [...prev, data.orderItem]); // Simpan jika ingin update UI lokal
+        toast.success("Successfully added to cart!");
       } else {
-        toast.error("Failed to add item to cart"); // Show error toast
+        toast.error(data.error || "Failed to add to cart");
       }
     } catch (error) {
       console.error("Error adding item to cart:", error);
-      toast.error("Failed to add item to cart"); // Show error toast
+      toast.error("Failed to add item to cart");
     }
   };
 
@@ -154,9 +155,10 @@ const LaptopPage: React.FC = () => {
             displayedFiles.map((product) => (
               <div
                 key={product.id}
-                className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
+                className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm "
               >
                 {/* Jika stok 0, tampilkan label "Terjual Habis" */}
+
                 {product.stock === 0 && (
                   <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
                     Sold Out
