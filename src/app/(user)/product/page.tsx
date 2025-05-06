@@ -184,7 +184,7 @@ const ProductList = () => {
                       />
                     </svg>
                     <p className="text-sm font-medium text-gray-500 ">
-                      Fast Delivery
+                      Fast Delivery JJJJJJJJJ
                     </p>
                   </li>
 

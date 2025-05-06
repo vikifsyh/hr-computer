@@ -157,11 +157,14 @@ const LaptopPage: React.FC = () => {
                 key={product.id}
                 className="relative rounded-lg border border-gray-200 bg-white p-2 shadow-sm "
               >
+                {/* Jika stok 0, tampilkan label "Terjual Habis" */}
+
                 {product.stock === 0 && (
                   <div className="absolute top-2 left-2 bg-red-500 text-white text-sm font-semibold px-2 py-1 rounded-md">
                     Sold Out
                   </div>
                 )}
+
                 <div className="">
                   <Link href={`/product/${product.id}`}>
                     <Image
@@ -227,6 +230,7 @@ const LaptopPage: React.FC = () => {
                   <p className="text-sm text-neutral-400 font-medium mt-2 flex justify-end">
                     ({product.stock}) stock
                   </p>
+
                   <div className="mt-3 mb-4 flex items-center justify-between gap-4">
                     <p className="text-xl font-semibold text-gray-900">
                       {formatCurrency(product.price)}
