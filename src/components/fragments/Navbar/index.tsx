@@ -22,43 +22,6 @@ export default function Navbar() {
   const [cartTotal, setCartTotal] = useState(0);
   const [orders, setOrders] = useState([]); // Add state to store orders
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await fetch("/api/cart"); // Ambil data dari API cart
-        if (!response.ok) {
-          throw new Error("Failed to fetch orders");
-        }
-
-        const data = await response.json();
-        setOrders(data.orders); // Menyimpan data pesanan
-
-        // Menghitung total item dalam cart
-        const totalItems = data.orders.reduce(
-          (total: number, order: any) =>
-            total +
-            order.orderItems.reduce(
-              (sum: number, item: any) => sum + item.quantity,
-              0
-            ),
-          0
-        );
-        setCartTotal(totalItems); // Set total item
-      } catch (err) {
-        console.error("Failed to load orders:", err);
-      }
-    };
-
-    fetchOrders();
-  }, []);
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      // If user is authenticated, you could call fetchCartTotal if needed
-      // If fetchCartTotal is necessary, create the function and use it here
-    }
-  }, [status, session]);
-
   const dropDown = () => {
     setIsOpen(!isOpen);
   };
