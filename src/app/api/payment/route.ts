@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+
 import Midtrans from "midtrans-client";
+import { authOptions } from "../auth/[...nextauth]/options";
 
 const prisma = new PrismaClient();
 

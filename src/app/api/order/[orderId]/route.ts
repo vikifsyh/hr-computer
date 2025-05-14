@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "../../auth/[...nextauth]/options";
 
 const prisma = new PrismaClient();
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { orderId: string } }
-) {
-  if (!params || !params.orderId) {
+export async function PUT(req: NextRequest) {
+  const url = new URL(req.url);
+  const orderId = url.pathname.split("/").pop(); // Mengambil orderId dari URL path
+
+  if (!orderId) {
     return NextResponse.json(
       { error: "Order ID is missing in the URL." },
       { status: 400 }
     );
   }
 
-  const { orderId } = params;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -29,7 +28,7 @@ export async function PUT(
   try {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { user: true }, // Menyertakan informasi user
+      include: { user: true },
     });
 
     if (!order) {
@@ -48,7 +47,7 @@ export async function PUT(
       );
     }
 
-    // Admin mengubah ke "DIKEMAS" atau "DIKIRIM"
+    // Admin logic
     if (session.user.role === "ADMIN") {
       if (shippingStatus === "DIKIRIM" && !trackingNumber) {
         return NextResponse.json(
@@ -63,7 +62,7 @@ export async function PUT(
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: { shippingStatus, trackingNumber },
-        include: { user: true }, // Menyertakan user agar response memiliki data user
+        include: { user: true },
       });
 
       return NextResponse.json({
@@ -76,7 +75,7 @@ export async function PUT(
       });
     }
 
-    // User hanya bisa mengubah ke "SELESAI"
+    // User logic
     if (session.user.role === "USER") {
       if (shippingStatus !== "SELESAI") {
         return NextResponse.json(
@@ -98,7 +97,7 @@ export async function PUT(
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: { shippingStatus },
-        include: { user: true }, // Menyertakan user agar response memiliki data user
+        include: { user: true },
       });
 
       return NextResponse.json({
@@ -138,16 +137,15 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // Fetch orders and include orderItems with related product and user information
     const orders = await prisma.order.findMany({
       where: { userId },
       include: {
         orderItems: {
           include: {
-            product: true, // Pastikan detail produk disertakan untuk setiap order item
+            product: true,
           },
         },
-        user: true, // Menyertakan informasi user
+        user: true,
       },
       orderBy: { createdAt: "desc" },
     });

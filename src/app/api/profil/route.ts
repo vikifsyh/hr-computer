@@ -5,7 +5,7 @@ import { stat, mkdir, writeFile } from "fs/promises";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import _ from "lodash";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "../auth/[...nextauth]/options";
 
 const prisma = new PrismaClient();
 
