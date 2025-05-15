@@ -77,7 +77,7 @@ const Orders: React.FC = () => {
       if (!response.ok) throw new Error("Failed to update shipping status");
 
       // ✅ Redirect setelah update sukses
-      window.location.href = "/transaction"; // Ganti dengan halaman tujuan setelah selesai
+      window.location.href = "/track-package"; // Ganti dengan halaman tujuan setelah selesai
     } catch (err) {
       setError("Failed to update shipping status");
     }
