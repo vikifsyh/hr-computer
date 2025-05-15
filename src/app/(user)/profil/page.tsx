@@ -110,11 +110,11 @@ export default function Profile() {
   };
 
   return (
-    <div className="mx-36 my-10">
-      <div className="border border-neutral-50 p-5 rounded-lg">
-        <h1 className="text-lg font-medium">Profile</h1>
-        <div className="my-4 flex w-full gap-5">
-          <div className="max-w-60 border border-neutral-50 p-2 rounded-md">
+    <div className="px-4 md:px-8 lg:px-36 py-6">
+      <div className="border border-neutral-50 p-4 md:p-6 rounded-lg">
+        <h1 className="text-lg font-medium mb-4">Profile</h1>
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="w-full md:max-w-60 border border-neutral-50 p-2 rounded-md">
             <Image
               src={userData.image || NoPict}
               alt={`${userData.name || "User"}'s profile`}
@@ -139,7 +139,7 @@ export default function Profile() {
             </div>
           </div>
           <div className="w-full">
-            <div className="p-4">
+            <div className="p-1 md:p-4">
               <label className="text-xs" htmlFor="name">
                 Name *
               </label>
@@ -151,7 +151,7 @@ export default function Profile() {
                 disabled
               />
             </div>
-            <div className="p-4">
+            <div className="p-1 md:p-4">
               <label className="text-xs" htmlFor="phoneNumber">
                 Phone Number *
               </label>
@@ -162,7 +162,7 @@ export default function Profile() {
                 className="w-full p-2 border border-neutral-50 rounded-md focus:border-primary-600 outline-none mt-1"
               />
             </div>
-            <div className="p-4">
+            <div className="p-1 md:p-4">
               <label className="text-xs" htmlFor="email">
                 Email *
               </label>
@@ -174,7 +174,7 @@ export default function Profile() {
                 disabled
               />
             </div>
-            <div className="p-4">
+            <div className="p-1 md:p-4">
               <label className="text-xs" htmlFor="address">
                 Address
               </label>

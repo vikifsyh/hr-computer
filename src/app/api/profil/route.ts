@@ -6,65 +6,38 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import _ from "lodash";
 import { authOptions } from "../auth/[...nextauth]/options";
+import cloudinary from "../../../../lib/cloudinary";
 
 const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const userId = session.user.id; // Assumes `id` is part of the session user object
+  const userId = session.user.id;
   const formData = await req.formData();
-
   const address = (formData.get("address") as string) || null;
   const image = (formData.get("image") as File) || null;
 
-  let fileUrl = null;
+  let fileUrl: string | null = null;
 
   if (image) {
     const buffer = Buffer.from(await image.arrayBuffer());
-    const relativeUploadDir = `/uploads/${new Date(Date.now())
-      .toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, "-")}`;
-
-    const uploadDir = join(process.cwd(), "public", relativeUploadDir);
+    const base64Image = `data:${image.type};base64,${buffer.toString(
+      "base64"
+    )}`;
 
     try {
-      await stat(uploadDir);
-    } catch (e: any) {
-      if (e.code === "ENOENT") {
-        await mkdir(uploadDir, { recursive: true });
-      } else {
-        console.error(
-          "Error while trying to create directory when uploading a file\n",
-          e
-        );
-        return NextResponse.json(
-          { error: "Something went wrong." },
-          { status: 500 }
-        );
-      }
-    }
-
-    try {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const filename = `${image.name.replace(
-        /\.[^/.]+$/,
-        ""
-      )}-${uniqueSuffix}.${mime.getExtension(image.type)}`;
-      await writeFile(`${uploadDir}/${filename}`, buffer);
-      fileUrl = `${relativeUploadDir}/${filename}`;
+      const uploadResult = await cloudinary.uploader.upload(base64Image, {
+        folder: "user_profiles",
+      });
+      fileUrl = uploadResult.secure_url;
     } catch (e) {
-      console.error("Error while trying to upload a file\n", e);
+      console.error("Cloudinary upload error\n", e);
       return NextResponse.json(
-        { error: "Something went wrong." },
+        { error: "Image upload failed." },
         { status: 500 }
       );
     }
@@ -187,61 +160,33 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   const session = await getServerSession(authOptions);
-
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const userId = session.user.id;
   const formData = await req.formData();
-
   const address = (formData.get("address") as string) || null;
   const phoneNumber = (formData.get("phoneNumber") as string) || null;
   const image = (formData.get("image") as File) || null;
 
-  let fileUrl = null;
+  let fileUrl: string | null = null;
 
   if (image) {
     const buffer = Buffer.from(await image.arrayBuffer());
-    const relativeUploadDir = `/uploads/${new Date(Date.now())
-      .toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, "-")}`;
-
-    const uploadDir = join(process.cwd(), "public", relativeUploadDir);
+    const base64Image = `data:${image.type};base64,${buffer.toString(
+      "base64"
+    )}`;
 
     try {
-      await stat(uploadDir);
-    } catch (e: any) {
-      if (e.code === "ENOENT") {
-        await mkdir(uploadDir, { recursive: true });
-      } else {
-        console.error(
-          "Error while trying to create directory when uploading a file\n",
-          e
-        );
-        return NextResponse.json(
-          { error: "Something went wrong." },
-          { status: 500 }
-        );
-      }
-    }
-
-    try {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const filename = `${image.name.replace(
-        /\.[^/.]+$/,
-        ""
-      )}-${uniqueSuffix}.${mime.getExtension(image.type)}`;
-      await writeFile(`${uploadDir}/${filename}`, buffer);
-      fileUrl = `${relativeUploadDir}/${filename}`;
+      const uploadResult = await cloudinary.uploader.upload(base64Image, {
+        folder: "user_profiles",
+      });
+      fileUrl = uploadResult.secure_url;
     } catch (e) {
-      console.error("Error while trying to upload a file\n", e);
+      console.error("Cloudinary upload error\n", e);
       return NextResponse.json(
-        { error: "Something went wrong." },
+        { error: "Image upload failed." },
         { status: 500 }
       );
     }

@@ -1,8 +1,6 @@
 import { PrismaClient, CategoryEnum } from "@prisma/client";
-import mime from "mime";
-import { join } from "path";
-import { stat, mkdir, writeFile, unlink } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
+import cloudinary from "../../../../lib/cloudinary";
 
 const prisma = new PrismaClient();
 
@@ -13,20 +11,31 @@ type ProductResponse = {
   message?: string;
 };
 
-// POST Method: Add Product
+// Fungsi upload ke Cloudinary
+async function uploadToCloudinary(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const base64 = buffer.toString("base64");
+  const dataUri = `data:${file.type};base64,${base64}`;
+
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: "products",
+  });
+
+  return result.secure_url;
+}
+
+// POST
 export async function POST(
   req: NextRequest
 ): Promise<NextResponse<ProductResponse>> {
   const formData = await req.formData();
-
   const name = (formData.get("name") as string) || null;
   const description = (formData.get("description") as string) || null;
   const image = (formData.get("image") as File) || null;
   const price = (formData.get("price") as string) || null;
   const category = (formData.get("category") as string) || null;
-  const stock = formData.get("stock") ? Number(formData.get("stock")) : 0; // <-- Mengambil stock dari formData
+  const stock = formData.get("stock") ? Number(formData.get("stock")) : 0;
 
-  // Validasi field yang diperlukan
   if (!name || !price || !category) {
     return NextResponse.json(
       { error: "Name, price, and category are required fields." },
@@ -34,7 +43,6 @@ export async function POST(
     );
   }
 
-  // Validasi kategori
   if (!Object.values(CategoryEnum).includes(category as CategoryEnum)) {
     return NextResponse.json(
       { error: "Invalid category provided." },
@@ -42,34 +50,11 @@ export async function POST(
     );
   }
 
-  const buffer = image ? Buffer.from(await image.arrayBuffer()) : null;
-  const relativeUploadDir = `/uploads/${new Date(Date.now())
-    .toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-    .replace(/\//g, "-")}`;
-  const uploadDir = join(process.cwd(), "public", relativeUploadDir);
-
-  try {
-    await stat(uploadDir);
-  } catch {
-    await mkdir(uploadDir, { recursive: true });
-  }
-
   let fileUrl = null;
-  if (buffer && image) {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const filename = `${image.name.replace(
-      /\.[^/.]+$/,
-      ""
-    )}-${uniqueSuffix}.${mime.getExtension(image.type)}`;
-    await writeFile(`${uploadDir}/${filename}`, buffer);
-    fileUrl = `${relativeUploadDir}/${filename}`;
+  if (image) {
+    fileUrl = await uploadToCloudinary(image);
   }
 
-  // Pastikan kategori diberikan sebagai tipe CategoryEnum
   const categoryEnum = category as CategoryEnum;
 
   const result = await prisma.product.create({
@@ -78,7 +63,7 @@ export async function POST(
       description,
       price,
       image: fileUrl,
-      stock, // <-- Gunakan stock di sini
+      stock,
       category: categoryEnum,
     },
   });
@@ -86,6 +71,7 @@ export async function POST(
   return NextResponse.json({ product: result });
 }
 
+// PUT
 export async function PUT(req: NextRequest) {
   const formData = await req.formData();
   const { searchParams } = new URL(req.url);
@@ -102,7 +88,7 @@ export async function PUT(req: NextRequest) {
   const category = (formData.get("category") as string) || null;
   const stock = formData.get("stock")
     ? Number(formData.get("stock"))
-    : undefined; // <-- Mengambil quantity dari formData
+    : undefined;
 
   if (
     category &&
@@ -121,32 +107,12 @@ export async function PUT(req: NextRequest) {
 
   let fileUrl = existingProduct.image;
   if (image) {
-    const buffer = Buffer.from(await image.arrayBuffer());
-    const relativeUploadDir = `/uploads/${new Date(Date.now())
-      .toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, "-")}`;
-    const uploadDir = join(process.cwd(), "public", relativeUploadDir);
+    fileUrl = await uploadToCloudinary(image);
 
-    try {
-      await stat(uploadDir);
-    } catch {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const filename = `${image.name.replace(
-      /\.[^/.]+$/,
-      ""
-    )}-${uniqueSuffix}.${mime.getExtension(image.type)}`;
-    await writeFile(`${uploadDir}/${filename}`, buffer);
-    fileUrl = `${relativeUploadDir}/${filename}`;
-
-    if (existingProduct.image) {
-      await unlink(join(process.cwd(), "public", existingProduct.image));
+    // OPTIONAL: Hapus gambar lama dari Cloudinary
+    if (existingProduct.image?.includes("res.cloudinary.com")) {
+      const publicId = getPublicIdFromUrl(existingProduct.image);
+      if (publicId) await cloudinary.uploader.destroy(publicId);
     }
   }
 
@@ -165,7 +131,7 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ product: updatedProduct });
 }
 
-// DELETE Method: Delete Product
+// DELETE
 export async function DELETE(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
@@ -179,15 +145,17 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Product not found." }, { status: 404 });
   }
 
-  if (existingProduct.image) {
-    await unlink(join(process.cwd(), "public", existingProduct.image));
+  // OPTIONAL: Hapus file dari Cloudinary
+  if (existingProduct.image?.includes("res.cloudinary.com")) {
+    const publicId = getPublicIdFromUrl(existingProduct.image);
+    if (publicId) await cloudinary.uploader.destroy(publicId);
   }
 
   await prisma.product.delete({ where: { id } });
   return NextResponse.json({ message: "Product deleted successfully." });
 }
 
-// GET Method: Fetch Products
+// GET
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
@@ -201,4 +169,17 @@ export async function GET(req: NextRequest) {
 
   const products = await prisma.product.findMany();
   return NextResponse.json({ products });
+}
+
+// OPTIONAL: Fungsi untuk mendapatkan `public_id` dari URL Cloudinary
+function getPublicIdFromUrl(url: string): string | null {
+  try {
+    const parts = url.split("/");
+    const filename = parts[parts.length - 1];
+    const [publicId] = filename.split(".");
+    const folder = parts.slice(-2, -1)[0];
+    return `${folder}/${publicId}`;
+  } catch {
+    return null;
+  }
 }
