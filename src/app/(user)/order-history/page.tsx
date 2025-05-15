@@ -74,7 +74,7 @@ export default function PaymentPage() {
         window.snap.pay(token, {
           onSuccess: async (result: any) => {
             console.log("Payment success:", result);
-            router.push("/order-history");
+            window.location.replace("/order-history");
 
             const orderIdFromResult = result.order_id.split("-")[1];
             try {
@@ -95,7 +95,7 @@ export default function PaymentPage() {
           },
           onPending: (result: any) => {
             console.log("Payment pending:", result);
-            router.push("/order-history");
+            window.location.replace("/order-history");
           },
           onError: (result: any) => {
             console.error("Payment error:", result);
@@ -257,7 +257,7 @@ export default function PaymentPage() {
 
                 <div className="text-right mt-4">
                   <Link
-                    href={`/track-package/${order.id}`}
+                    href={`/track-package`}
                     className="inline-block bg-primary hover:bg-primary-400 text-white font-semibold px-5 py-2 rounded-lg transition"
                   >
                     Track Package
