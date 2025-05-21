@@ -31,35 +31,37 @@ export default function Page() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [updateError, setUpdateError] = useState<string | null>(null); // Added state for update error
-  const [quantityError, setQuantityError] = useState<string | null>(null); // Added state for quantity error
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [quantityError, setQuantityError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Fungsi untuk fetch cart items, bisa dipanggil ulang saat perlu refresh data
+  const fetchCartItems = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/cart");
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders");
+      }
+      const data = await response.json();
+      const pendingOrders = data.orders.filter(
+        (order: Order & { paymentStatus?: string }) =>
+          order.paymentStatus === "PENDING"
+      );
+      setOrders(pendingOrders);
+    } catch (err) {
+      setError("Failed to load orders");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
+    fetchCartItems();
+
     const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
     const clientKey = process.env.MIDTRANS_CLIENT_KEY || "";
-
-    const fetchOrders = async () => {
-      try {
-        const response = await fetch("/api/cart");
-        if (!response.ok) {
-          throw new Error("Failed to fetch orders");
-        }
-
-        const data = await response.json();
-        const pendingOrders = data.orders.filter(
-          (order: Order & { paymentStatus?: string }) =>
-            order.paymentStatus === "PENDING"
-        );
-        setOrders(pendingOrders);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to load orders");
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
 
     const script = document.createElement("script");
     script.src = snapScript;
@@ -82,12 +84,38 @@ export default function Page() {
         throw new Error("Failed to remove item");
       }
 
-      setOrders((prevOrders) =>
-        prevOrders.map((order) => ({
-          ...order,
-          orderItems: order.orderItems.filter((item) => item.id !== itemId),
-        }))
-      );
+      // Karena order bisa ikut terhapus jika item terakhir dihapus,
+      // kita perlu update state orders dengan logika:
+      // - Cari order yang punya item tersebut
+      // - Filter itemnya dari orderItems
+      // - Jika setelah filter orderItems kosong, hapus order dari orders
+
+      setOrders((prevOrders) => {
+        return prevOrders.reduce((acc, order) => {
+          // cek apakah order punya item yang dihapus
+          const hasItem = order.orderItems.some((item) => item.id === itemId);
+
+          if (!hasItem) {
+            // order ini gak ada item yang dihapus, keep as is
+            acc.push(order);
+            return acc;
+          }
+
+          // filter item yang dihapus
+          const filteredItems = order.orderItems.filter(
+            (item) => item.id !== itemId
+          );
+
+          if (filteredItems.length === 0) {
+            // semua item sudah dihapus, jangan push order ini (hapus order)
+            return acc;
+          }
+
+          // masih ada item tersisa, push order dengan item yang sudah difilter
+          acc.push({ ...order, orderItems: filteredItems });
+          return acc;
+        }, [] as typeof prevOrders);
+      });
     } catch (error) {
       console.error("Error removing item:", error);
       alert("Failed to remove item. Please try again.");

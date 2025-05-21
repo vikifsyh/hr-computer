@@ -285,10 +285,12 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    // Hapus orderItem
     await prisma.orderItem.delete({
       where: { id: itemId },
     });
 
+    // Kembalikan stok produk
     const product = await prisma.product.findUnique({
       where: { id: orderItem.productId },
     });
@@ -299,6 +301,18 @@ export async function DELETE(req: NextRequest) {
         data: {
           stock: product.stock + orderItem.quantity,
         },
+      });
+    }
+
+    // Cek apakah order masih punya item tersisa
+    const remainingItemsCount = await prisma.orderItem.count({
+      where: { orderId: orderItem.orderId },
+    });
+
+    // Jika tidak ada item tersisa, hapus order
+    if (remainingItemsCount === 0) {
+      await prisma.order.delete({
+        where: { id: orderItem.orderId },
       });
     }
 
