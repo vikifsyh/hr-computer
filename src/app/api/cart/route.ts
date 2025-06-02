@@ -7,7 +7,6 @@ const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
   try {
-    // Mengambil session
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) {
@@ -17,24 +16,20 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Menyaring berdasarkan role
     const userId = session.user.id;
 
-    // Jika user adalah "ADMIN", maka izinkan mengakses semua data
     if (session.user.role === "ADMIN") {
-      // Query untuk mendapatkan semua order data
       const orders = await prisma.order.findMany({
         include: {
-          user: true, // Menyertakan data user
+          user: true,
           orderItems: {
             include: {
-              product: true, // Menyertakan data produk yang dipesan
+              product: true,
             },
           },
         },
       });
 
-      // Format data sesuai kebutuhan
       const formattedOrders = orders.map((order) => ({
         id: order.id,
         userName: order.user?.name || "Unknown User",
@@ -57,22 +52,28 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ orders: formattedOrders });
     }
 
-    // Jika user adalah "USER", hanya dapat melihat data miliknya sendiri
     const orders = await prisma.order.findMany({
       where: {
-        userId: userId, // Filtering berdasarkan userId
+        userId: userId,
       },
       include: {
-        user: true, // Menyertakan data user
+        user: true,
         orderItems: {
           include: {
-            product: true, // Menyertakan data produk yang dipesan
+            product: true,
           },
         },
       },
     });
 
-    // Format data sesuai kebutuhan
+    // Ambil semua negosiasi yang diterima untuk user ini
+    const acceptedNegotiations = await prisma.negotiation.findMany({
+      where: {
+        userId,
+        status: "ACCEPTED",
+      },
+    });
+
     const formattedOrders = orders.map((order) => ({
       id: order.id,
       userName: order.user?.name || "Unknown User",
@@ -84,14 +85,24 @@ export async function GET(req: NextRequest) {
         0
       ),
       totalItems: order.orderItems.length,
-      orderItems: order.orderItems.map((item) => ({
-        id: item.id,
-        productName: item.product.name,
-        quantity: item.quantity,
-        price: item.product.price || 0,
-        productImage: item.product.image,
-        productId: item.product.id,
-      })),
+      orderItems: order.orderItems.map((item) => {
+        const acceptedNego = acceptedNegotiations.find(
+          (nego) => nego.productId === item.product.id
+        );
+
+        return {
+          id: item.id,
+          productId: item.product.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          price: acceptedNego
+            ? acceptedNego.offerPrice
+            : item.product.price || 0,
+          isNegotiated: !!acceptedNego,
+          negotiatedPrice: acceptedNego?.offerPrice || null,
+          productImage: item.product.image,
+        };
+      }),
     }));
 
     return NextResponse.json({ orders: formattedOrders });
@@ -149,9 +160,24 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const price = parseFloat(product.price as string);
+  // *** Tambahan: cek negosiasi diterima ***
+  const acceptedNegotiation = await prisma.negotiation.findFirst({
+    where: {
+      productId: product.id,
+      userId,
+      status: "ACCEPTED",
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
-  if (isNaN(price)) {
+  // Tentukan harga final (hasil negosiasi jika ada, harga produk asli jika tidak)
+  const finalPrice = acceptedNegotiation
+    ? acceptedNegotiation.offerPrice
+    : parseFloat(product.price as string);
+
+  if (isNaN(finalPrice)) {
     return NextResponse.json(
       { error: "Invalid product price" },
       { status: 400 }
@@ -203,12 +229,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Tambahkan item baru ke orderItems
+    // Tambahkan item baru ke orderItems dengan harga final
     orderItem = await prisma.orderItem.create({
       data: {
         orderId: cart.id,
         productId,
-        price,
+        price: finalPrice,
         quantity,
       },
     });

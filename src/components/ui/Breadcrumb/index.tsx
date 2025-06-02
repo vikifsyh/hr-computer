@@ -22,6 +22,12 @@ const Breadcrumb: React.FC = () => {
       { name: "Dashboard", href: "/admin" },
       { name: "Product Management", href: "" },
     ];
+  } else if (pathname === "/admin/negotiations") {
+    breadcrumbItems = [
+      { name: "Home", href: "/" },
+      { name: "Dashboard", href: "/admin" },
+      { name: "Negotiation Management", href: "" },
+    ];
   } else if (pathname === "/admin/users") {
     breadcrumbItems = [
       { name: "Home", href: "/" },

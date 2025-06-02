@@ -3,6 +3,7 @@ import {
   ArrowLeftOnRectangleIcon,
   Bars3Icon,
   ChartPieIcon,
+  HandThumbUpIcon,
   ShoppingBagIcon,
   ShoppingCartIcon,
   UserGroupIcon,
@@ -73,6 +74,19 @@ export default function Sidebar() {
                 <ShoppingBagIcon className="w-5 h-5" />
                 <span className="flex-1 ms-3 whitespace-nowrap">
                   Product Management
+                </span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/negotiations"
+                className={`flex items-center p-2 text-primary rounded-lg hover:bg-primary-100 ${
+                  pathname === "/admin/negotiations" ? "bg-primary-100" : ""
+                }`}
+              >
+                <HandThumbUpIcon className="w-5 h-5" />
+                <span className="flex-1 ms-3 whitespace-nowrap">
+                  Negotiations
                 </span>
               </Link>
             </li>

@@ -38,6 +38,8 @@ model User {
   
   // Relasi dengan Order
   orders        Order[]
+
+  negotiations  Negotiation[]
 }
 
 model Product {
@@ -52,6 +54,7 @@ model Product {
   category        CategoryEnum
   // Relasi dengan OrderItem
   orderItems      OrderItem[]
+  negotiations    Negotiation[]
 }
 
 model Order {
@@ -82,5 +85,16 @@ model OrderItem {
   isDeleted       Boolean @default(false)
 }
 
+model Negotiation {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   String
+  offerPrice  Float
+  status      String   @default("PENDING") // ACCEPTED | REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 
 
